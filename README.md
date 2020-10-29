@@ -1,5 +1,5 @@
 # Equality
-﻿The aim of this project is to optimize streaming analytics on Geo-distributed, heterogeneous and edge computing environments. The objective is to find the trade-off between latency and data-quality check on the data by finding an optimal task placement of devices and a DQ check fraction. The custom Storm scheduler enforces the offline algorithms placement decisions. The Storm topologies also enforce configurations like selectivity of the operators and tuple distribution to tasks. 
+﻿The aim of this project is to optimize streaming analytics on Geo-distributed, heterogeneous and edge computing environments. The objective is to find the trade-off between latency and data-quality check on the data by finding an optimal task placement of devices and a DQ check fraction. The custom Storm scheduler (compatible with Storm 2.1.0) enforces the offline algorithms placement decisions. The Storm topologies also enforce configurations like selectivity of the operators and tuple distribution to tasks. 
 
 
 Equality Scheduler Set-up:
