@@ -3,11 +3,7 @@
 #Description:Class that equally distributes
 #	tasks to all avaialable devices.
 #-------------------------------------------#
-from pulp import *
-import numpy as np
-import copy
-import random 
-import time
+
 
 class EqualAssignment():
 	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,fractions,UsedCpu,UsedMem):
@@ -73,7 +69,9 @@ class EqualAssignment():
 				else:
 					temp.append(0)
 			DQfractions[op]=temp
-		DQfraction=(1/noOfSources)*sum		
+		DQfraction=(1/noOfSources)*sum
+		if (DQfraction > 1):  # Due to float operations
+			DQfraction = 1
 		F=totalTransferTime/(1+beta*DQfraction)
 		DQfraction=round(DQfraction,3)
 		totalTransferTime=round(totalTransferTime,3)
