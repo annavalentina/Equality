@@ -9,8 +9,6 @@ from GraphVivaldi import GraphVivaldi
 from Configuration import Configuration
 from Vivaldi import Vivaldi
 
-import sys
-from matplotlib.pyplot import *
 
 class VivaldyMain:
 	def buildgraph(self,comCost):

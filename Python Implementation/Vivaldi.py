@@ -9,12 +9,6 @@
 from math import sqrt
 import random
 import sys
-from matplotlib import pyplot
-
-# from Graph import Graph
-# from Configuration import Configuration
-
-# from matplotlib import pyplot
 
 def vadd(a,b):
 	return [a[i]+b[i] for i in range(len(a))]
