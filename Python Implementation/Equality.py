@@ -6,20 +6,15 @@
 #	in a geo-distributed, heterogeneous and
 #	edge-computing environment. 
 #-------------------------------------------#
-from pulp import *
 import random
-import time
-from array import *
+import gurobipy as gp
+from gurobipy import GRB
 from random import choices
-from Graph import Graph
-import numpy as np
 import copy
-from scipy.optimize import minimize
 from LPOptimizer import LPOptimizer
 from DAGCreator import DAGCreator
 from SpringRelaxation import SpringRelaxation
 from EqualAssignment import EqualAssignment
-import time
 import sys
 
 class Equality():
@@ -45,6 +40,15 @@ class Equality():
 	#ARG3:alpha penalty (the bigger the value the smaller the penalty)-tested values: 5, 10
 	#ARG4:threshold for qualOpt-tested values: 075, 0.8, 0.85, 0.9, 0.95
 	#ARG5:number of iterations
+	f = open("FExp.txt", "a")
+	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", iterations="+sys.argv[5]+"\n")
+	f.close()
+	f = open("DQExp.txt", "a")
+	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", iterations="+sys.argv[5]+"\n")
+	f.close()
+	f = open("timeExp.txt", "a")
+	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", iterations="+sys.argv[5]+"\n")
+	f.close()
 	f = open("F.txt", "a")
 	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", iterations="+sys.argv[5]+"\n")
 	f.close()
@@ -54,8 +58,17 @@ class Equality():
 	f = open("time.txt", "a")
 	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", iterations="+sys.argv[5]+"\n")
 	f.close()
+	f = open("FExp.txt", "a")
+	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
+	f.close()
+	f = open("DQExp.txt", "a")
+	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
+	f.close()
+	f = open("timeExp.txt", "a")
+	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
+	f.close()
 	#DEFINE GRAPH
-	for iter1 in range(1,8):
+	for iter1 in range(0,8):
 		if (iter1 == 5):
 			f = open("F.txt", "a")
 			f.write("Replicated" + "\n")
@@ -64,6 +77,15 @@ class Equality():
 			f.write("Replicated" + "\n")
 			f.close()
 			f = open("time.txt", "a")
+			f.write("Replicated" + "\n")
+			f.close()
+			f = open("FExp.txt", "a")
+			f.write("Replicated" + "\n")
+			f.close()
+			f = open("DQExp.txt", "a")
+			f.write("Replicated" + "\n")
+			f.close()
+			f = open("timeExp.txt", "a")
 			f.write("Replicated" + "\n")
 			f.close()
 		elif (iter1 == 6):
@@ -76,6 +98,15 @@ class Equality():
 			f = open("time.txt", "a")
 			f.write("Diamond" + "\n")
 			f.close()
+			f = open("FExp.txt", "a")
+			f.write("Diamond" + "\n")
+			f.close()
+			f = open("DQExp.txt", "a")
+			f.write("Diamond" + "\n")
+			f.close()
+			f = open("timeExp.txt", "a")
+			f.write("Diamond" + "\n")
+			f.close()
 		elif (iter1 == 7):
 			f = open("F.txt", "a")
 			f.write("Sequential" + "\n")
@@ -86,15 +117,33 @@ class Equality():
 			f = open("time.txt", "a")
 			f.write("Sequential" + "\n")
 			f.close()
+			f = open("FExp.txt", "a")
+			f.write("Sequential" + "\n")
+			f.close()
+			f = open("DQExp.txt", "a")
+			f.write("Sequential" + "\n")
+			f.close()
+			f = open("timeExp.txt", "a")
+			f.write("Sequential" + "\n")
+			f.close()
 		else:
 			 f = open("F.txt", "a")
-			 f.write("Medium "+str(iter1)+ "\n")
+			 f.write("Medium"+str(iter1)+ "\n")
 			 f.close()
 			 f = open("DQ.txt", "a")
-			 f.write("Medium "+str(iter1) +"\n")
+			 f.write("Medium"+str(iter1) +"\n")
 			 f.close()
 			 f = open("time.txt", "a")
-			 f.write("Medium "+str(iter1)+ "\n")
+			 f.write("Medium"+str(iter1)+ "\n")
+			 f.close()
+			 f = open("FExp.txt", "a")
+			 f.write("Medium" + str(iter1) + "\n")
+			 f.close()
+			 f = open("DQExp.txt", "a")
+			 f.write("Medium" + str(iter1) + "\n")
+			 f.close()
+			 f = open("timeExp.txt", "a")
+			 f.write("Medium" + str(iter1) + "\n")
 			 f.close()
 		numberOfIterations=int(sys.argv[5])
 		for iter2 in range(numberOfIterations):
@@ -197,7 +246,7 @@ class Equality():
 					
 			#Spring relaxation
 			sr=SpringRelaxation()
-			(DQfractionSpring,totalTransferTimeSrping,FSpring)=sr.run(numberOfDevices,comCost,numberOfOperators,paths,pairs,source,sink,children,parents,RCpu,RMem,CCpu,CMem,available,fractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha)	
+			(DQfractionSpring,totalTransferTimeSrping,FSpring)=sr.run(numberOfDevices,comCost,numberOfOperators,paths,pairs,source,children,parents,RCpu,RMem,CCpu,CMem,available,fractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha)
 
 			#Εqual distribution
 			eq=EqualAssignment()
@@ -208,33 +257,51 @@ class Equality():
 			slowestDevices={}
 			for op in range(numberOfOperators):
 				if(op not in source):#For each non source
-					problem = LpProblem("problemName", LpMinimize)
-					transferTime = LpVariable("transferTime")
-					fraction = LpVariable.dicts("x", list(range(numberOfDevices)), 0, 100, cat="Integer")
-					for i in range(numberOfDevices):#Constraints
-						problem+=(fraction[i]*RCpu[op]/100)<=(CCpu[i]-UsedCpu[i])
-						problem+=(fraction[i]*RMem[op]/100)<=(CMem[i]-UsedMem[i])
-					c1=0
-					for i in range(numberOfDevices):
+					modelN = gp.Model("lp")
+					modelN.Params.OutputFlag = 0
+					transferTime = modelN.addVar(vtype=GRB.CONTINUOUS, lb=0, name="transferTime") #The objective
+					fList = list(range(numberOfDevices))
+					fraction = modelN.addVars(fList, lb=0, ub=100, vtype=GRB.INTEGER, name="x")
+					binZerol = list(range(numberOfDevices))
+					binSelfl = list(range(numberOfDevices))
+					binZero = modelN.addVars(binZerol, lb=0, ub=1, vtype=GRB.INTEGER, name="bz") #0 if the destination device will not hold data, 1 otherwise
+					binSelf = modelN.addVars(binSelfl, lb=0, ub=1, vtype=GRB.INTEGER, name="bs") #1 if the destination device is the same as the starting one, 0 otherwise
+
+					c1 = 0
+					for i in range(numberOfDevices):#CPU, RAM constraints
+						modelN.addConstr((fraction[i] * RCpu[op] / 100) <= (CCpu[i] - UsedCpu[i]))
+						modelN.addConstr((fraction[i] * RMem[op] / 100) <= (CMem[i] - UsedMem[i]))
 						c1+=fraction[i]#Sum of fractions equal to 100
-						if(available[op][i]==0):
-							problem+=fraction[i]==0
-					problem+=c1==100
-					c2=0
+						if(available[op][i]==0):#Availability constraint
+							modelN.addConstr(fraction[i] == 0)
+						modelN.addConstr(binSelf[i] >= fraction[i] / 100)
+						modelN.addConstr(binSelf[i] <= fraction[i] / 100 + 0.99)
+						modelN.addConstr(binZero[i] >= fraction[i] / 100)
+						modelN.addConstr(binZero[i] <= fraction[i] / 100 + 0.99)
+					modelN.addConstr(c1 == 100)
+
 					for op1 in parents[op]:
 						for dev1 in range(numberOfDevices):
+							c2 = 0
 							for dev2 in range(numberOfDevices):
-								c2=c2+((fractions[op1][dev1])*pairs[op1,op]*comCost[dev1][dev2]*fraction[dev2])/100	
-					transferTime=c2
-					problem+=transferTime
-					solved=problem.solve()#Solve LP
+								c2 = c2 + (fractions[op1][dev1] * pairs[op1, op] * comCost[dev1][dev2] * fraction[dev2]) / 100
+								if (fractions[op1][dev1] != 0):#If the device holds data
+									c2 = c2 + alpha * (binZero.sum() - binSelf[dev1]) #Penalty for each enabled link to other device
+							modelN.addConstr(transferTime >= c2)#Minimize the max
+					modelN.setObjective(transferTime, GRB.MINIMIZE)
+
+					modelN.optimize()#Solve LP
+					if (modelN.STATUS != GRB.OPTIMAL):
+						solved = -1
+					else:
+						solved = 1
 					if(solved==-1):
 						break;
 					#Enforce solution
 					for i in range(numberOfDevices):
-						fractions[op].append(round(fraction[i].varValue)/100)
-						UsedCpu[i]=UsedCpu[i]+(fraction[i].varValue*RCpu[op]/100)
-						UsedMem[i]=UsedMem[i]+(fraction[i].varValue*RMem[op]/100)
+						fractions[op].append(round(fraction[i].x)/100)
+						UsedCpu[i]=UsedCpu[i]+(fraction[i].x*RCpu[op]/100)
+						UsedMem[i]=UsedMem[i]+(fraction[i].x*RMem[op]/100)
 			
 					
 			if(solved!=-1 ):#If a solution was found by LP
@@ -252,14 +319,14 @@ class Equality():
 							if(fractions[op1][dev1]!=0 and fractions[op2][dev2]!=0 and dev1!=dev2):
 								enabledLinks+=1
 							sum=sum+(fractions[op1][dev1]*pairs[op1,op2]*comCost[dev1][dev2]*fractions[op2][dev2])
+
 						sum=sum+alpha*enabledLinks#Penalty in case of multiple communication links enabled
 						if(sum>max):
 							max=sum
 							slowest=dev1
 						sum=0
 					transferTimes[(op1,op2)]=round(max,3)
-					slowestDevices[
-						(op1,op2)]=slowest
+					slowestDevices[(op1,op2)]=slowest
 
 				#Find slowest path
 				slowestPath=-1
@@ -303,7 +370,8 @@ class Equality():
 					UsedCpu[dev]=round(UsedCpu[dev],2)
 					UsedMem[dev]=round(UsedMem[dev],2)
 				DQfraction=1/noOfSources*sum
-				
+				if(DQfraction>1):#Due to float operations
+					DQfraction=1
 				F=totalTransferTime/(1+beta*DQfraction)
 				DQfraction=round(DQfraction,3)
 				totalTransferTime=round(totalTransferTime,3)
@@ -350,7 +418,7 @@ class Equality():
 				F=0
 				DQfraction=0
 				totalTransferTime=0
-			
+
 			f = open("F.txt", "a")
 			f.write("LP: "+ str(F)+", Spring: "+str(FSpring)+", latOpt: "+ str(FLat)+ ", qualOpt: "+str(FQual)+ ", Equal: " +str(FEQ)+", solved by: "+solvedBy+"\n")
 			f.close()
@@ -359,6 +427,16 @@ class Equality():
 			f.close()
 			f = open("time.txt", "a")
 			f.write("LP: "+ str(totalTransferTime)+", Spring: "+str(totalTransferTimeSrping)+", latOpt: "+ str(totalTransferTimeLat)+ ", qualOpt: "+str(totalTransferTimeQual)+ ", Equal: " +str(totalTransferTimeEQ)+", solved by: "+solvedBy+"\n")
+			f.close()
+
+			f = open("FExp.txt", "a")
+			f.write(str(F) + " " + str(FSpring) + " " + str(FLat) + " " + str(FQual) + " " + str(FEQ) + " " + solvedBy + "\n")
+			f.close()
+			f = open("DQExp.txt", "a")
+			f.write(str(DQfraction) + " " + str(DQfractionSpring) + " " + str(DQfractionLat) + " " + str(DQfractionQual) + " " + str(DQfractionEQ) + " " + solvedBy + "\n")
+			f.close()
+			f = open("timeExp.txt", "a")
+			f.write(str(totalTransferTime) + " " + str(totalTransferTimeSrping) + " " + str(totalTransferTimeLat) + " " + str(totalTransferTimeQual) + " " + str(totalTransferTimeEQ) + " " + solvedBy + "\n")
 			f.close()
 			
 
