@@ -5,11 +5,12 @@
 #	task placement solution based on 
 #	latency or quality.
 #-------------------------------------------#
-from pulp import *
+
 import numpy as np
 import copy
-import random 
-import time
+import gurobipy as gp
+from gurobipy import GRB
+
 
 class LPOptimizer():
 	global tempFractions
@@ -26,37 +27,52 @@ class LPOptimizer():
 		
 		for op2 in range(numberOfOperators):
 			if(operator in parents[op2]):
-				problem = LpProblem("problemName", LpMinimize)
-				executionTime = LpVariable("transferTime")
-				fraction = LpVariable.dicts("x", list(range(numberOfDevices)), 0, 100, cat="Integer")
+				model = gp.Model("lp")
+				model.Params.OutputFlag = 0
+				transferTime =model.addVar(vtype=GRB.CONTINUOUS, lb=0,name="transferTime")
+				fList = list(range(numberOfDevices))
+				fraction = model.addVars(fList, lb=0, ub=100, vtype=GRB.INTEGER, name="x")
+				binZerol = list(range(numberOfDevices))
+				binSelfl = list(range(numberOfDevices))
+				binZero = model.addVars(binZerol, lb=0, ub=1, vtype=GRB.INTEGER, name="bz")#0 if the destination device will not hold data, 1 otherwise
+				binSelf = model.addVars(binSelfl, lb=0, ub=1, vtype=GRB.INTEGER, name="bs")#1 if the destination device is the same as the starting one, 0 otherwise
 
-				for i in range(numberOfDevices):#Constraints
-					problem+=(fraction[i]*RCpu[op2]/100)<=(CCpu[i]-tempUsedCpu[i]+tempFractions[op2][i]*RCpu[op2])
-					problem+=(fraction[i]*RMem[op2]/100)<=(CMem[i]-tempUsedMem[i]+tempFractions[op2][i]*RMem[op2])
-					if(available[op2][i]==0):
-						problem+=fraction[i]==0
-
-				c1=0
-				for i in range(numberOfDevices):
+				c1 = 0
+				for i in range(numberOfDevices):#CPU, RAM constraints
+					model.addConstr((fraction[i] * RCpu[op2] / 100) <= (CCpu[i] - tempUsedCpu[i] + tempFractions[op2][i] * RCpu[op2]))
+					model.addConstr((fraction[i] * RMem[op2] / 100) <= (CMem[i] - tempUsedMem[i] + tempFractions[op2][i] * RMem[op2]))
+					if(available[op2][i]==0):#Sum of fractions equal to 100
+						model.addConstr(fraction[i]==0)
 					c1+=fraction[i]#Sum of fractions equal to 100
-				problem+=c1==100
+					model.addConstr(binSelf[i] >= fraction[i] / 100)
+					model.addConstr(binSelf[i] <= fraction[i] / 100 + 0.99)
+					model.addConstr(binZero[i] >= fraction[i] / 100)
+					model.addConstr(binZero[i] <= fraction[i] / 100 + 0.99)
+				model.addConstr(c1==100)
 				
-				c2=0
+
 				for op1 in parents[op2]:
 					for dev1 in range(numberOfDevices):
+						c2 = 0
 						for dev2 in range(numberOfDevices):
-							c2=c2+((tempFractions[op1][dev1])*pairs[op1,op2]*comCost[dev1][dev2]*fraction[dev2])/100						
-					
-				transferTime=c2
-				problem+=transferTime
-				solved=problem.solve()#Solve LP
-				if(solved==-1):
-					flag=1#No solution
+							c2=c2+(tempFractions[op1][dev1]*pairs[op1,op2]*comCost[dev1][dev2]*fraction[dev2])/100
+						if (tempFractions[op1][dev1] != 0):#If the device holds data
+							c2 = c2 + alpha * (binZero.sum() - binSelf[dev1])#Penalty for each enabled link to other device
+						model.addConstr(transferTime >= c2)#Minimize the max
+				model.setObjective(transferTime, GRB.MINIMIZE)
+				model.optimize()
+				if (model.STATUS != GRB.OPTIMAL):
+					solved = -1
+				else:
+					solved = 1
+				if (solved == -1):
+					flag = 1  # No solution
+				if (solved != -1):
 				#Enforce solution
-				for i in range(numberOfDevices):
-					tempUsedCpu[i]=tempUsedCpu[i]+(fraction[i].varValue*RCpu[op2]/100)-tempFractions[op2][i]*RCpu[op2]
-					tempUsedMem[i]=tempUsedMem[i]+(fraction[i].varValue*RMem[op2]/100)-tempFractions[op2][i]*RMem[op2]
-					tempFractions[op2][i]=round(fraction[i].varValue)/100
+					for i in range(numberOfDevices):
+						tempUsedCpu[i]=tempUsedCpu[i]+(fraction[i].x*RCpu[op2]/100)-tempFractions[op2][i]*RCpu[op2]
+						tempUsedMem[i]=tempUsedMem[i]+(fraction[i].x*RMem[op2]/100)-tempFractions[op2][i]*RMem[op2]
+						tempFractions[op2][i]=round(fraction[i].x)/100
 						
 				#Call the function for the children of the operator
 				self.recursivePairsLP(op2,numberOfOperators,pairs,comCost,numberOfDevices,available,RCpu,CCpu,RMem,CMem,parents,flag,alpha)
@@ -252,7 +268,9 @@ class LPOptimizer():
 				else:
 					temp.append(0)
 			tempDQfractions[op]=temp
-		tempDQfraction=(1/noOfSources)*sum		
+		tempDQfraction=(1/noOfSources)*sum
+		if (tempDQfraction > 1):  # Due to float operations
+			tempDQfraction = 1
 		tempF=temptotalTransferTime/(1+beta*tempDQfraction)
 		return(tempF,temptotalTransferTime,tempSlowestPath,tempDQfractions,tempDQfraction)
 	

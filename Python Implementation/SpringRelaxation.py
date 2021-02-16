@@ -5,13 +5,8 @@
 #-------------------------------------------#
 
 from VivaldyMain import VivaldyMain
-from DAGCreator import DAGCreator
-from array import *
-import random 
-from collections import defaultdict 
-from Graph import Graph
+import random
 from scipy.spatial import distance
-from random import choices
 import numpy as np
 import copy
 from HeuristicForSpring import HeuristicForSpring
@@ -54,7 +49,7 @@ class SpringRelaxation():
 			(fractions,UsedCpu,UsedMem,flag)=placement(operatorPositions,currExecutorPositions,node,RCpu,CCpu,RMem,CMem,UsedCpu,UsedMem,available,fraction,fractions,flag)
 		return fractions,UsedCpu,UsedMem,flag
 			
-	def run(self,numberOfDevices,comCost,numberOfOperators,paths,pairs,source,sink,children,parents,RCpu,RMem,CCpu,CMem,available
+	def run(self,numberOfDevices,comCost,numberOfOperators,paths,pairs,source,children,parents,RCpu,RMem,CCpu,CMem,available
 	,tempFractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha):
 		#Run vivaldi algorithm to create cost space for devices
 		h=VivaldyMain()
@@ -192,6 +187,8 @@ class SpringRelaxation():
 				UsedMem[dev]=round(UsedMem[dev],2)
 		
 			DQfraction=1/noOfSources*sum
+			if (DQfraction > 1):  # Due to float operations
+				DQfraction = 1
 			F=totalTransferTime/(1+beta*DQfraction)
 			DQfractionSpring=round(DQfraction,3)
 			totalTransferTimeSrping=round(totalTransferTime,3)
@@ -199,8 +196,11 @@ class SpringRelaxation():
 			
 			#Run heuristics
 			hs=HeuristicForSpring()
-			(DQfractionSpringH,totalTransferTimeSrpingH,FSpringH)=hs.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
-	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,DQfraction,totalTransferTime,F,beta,alpha,slowestPath,executorPositions,operatorPositions)
+
+
+
+			(DQfractionSpringH,totalTransferTimeSrpingH,FSpringH)=hs.run(numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs
+	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,F,beta,alpha,executorPositions,operatorPositions)
 			if(FSpringH<0 or FSpring<0):#If no solution was found
 				return(0,0,0)
 			elif(FSpringH!=0):#If the heuristics solution is better

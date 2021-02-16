@@ -4,7 +4,6 @@
 #-------------------------------------------#
 
 
-#!/usr/bin/python
 
 # The RTT matrix is represented by a graph, where vertices are the nodes in the network,
 # and the edge connecting the nodes represents the RTT between the nodes.

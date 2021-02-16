@@ -5,11 +5,11 @@
 #	Spring Relaxation task placement 
 #	solution based on cost space.
 #-------------------------------------------#
-from pulp import *
-import numpy as np
+
 from scipy.spatial import distance
-import random 
 import copy
+
+
 class HeuristicForSpring():
 	global tempFractions
 	global tempTransferTimes
@@ -125,12 +125,14 @@ class HeuristicForSpring():
 				else:
 					temp.append(0)
 			tempDQfractions[op]=temp
-		tempDQfraction=(1/noOfSources)*sum		
+		tempDQfraction=(1/noOfSources)*sum
+		if (tempDQfraction > 1):  # Due to float operations
+			tempDQfraction = 1
 		tempF=temptotalTransferTime/(1+beta*tempDQfraction)
 		return(tempF,temptotalTransferTime,tempSlowestPath,tempDQfractions,tempDQfraction)
 		
-	def run(self,numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
-	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,DQfraction,totalTransferTime,F,beta,alpha,slowestPath,executorPositions,operatorPositions):
+	def run(self,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs
+	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,F,beta,alpha,executorPositions,operatorPositions):
 		global tempFractions
 		global tempTransferTimes
 		global tempUsedCpu
