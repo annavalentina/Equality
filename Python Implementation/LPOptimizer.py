@@ -10,7 +10,7 @@ import numpy as np
 import copy
 import gurobipy as gp
 from gurobipy import GRB
-from testSolution import testSolution
+
 
 class LPOptimizer():
 	global tempFractions
@@ -70,8 +70,8 @@ class LPOptimizer():
 				if (solved != -1):
 				#Enforce solution
 					for i in range(numberOfDevices):
-						tempUsedCpu[i]=round(tempUsedCpu[i]+(fraction[i].x*RCpu[op2]/100)-tempFractions[op2][i]*RCpu[op2],2)
-						tempUsedMem[i]=round(tempUsedMem[i]+(fraction[i].x*RMem[op2]/100)-tempFractions[op2][i]*RMem[op2],2)
+						tempUsedCpu[i]=tempUsedCpu[i]+(fraction[i].x*RCpu[op2]/100)-tempFractions[op2][i]*RCpu[op2]
+						tempUsedMem[i]=tempUsedMem[i]+(fraction[i].x*RMem[op2]/100)-tempFractions[op2][i]*RMem[op2]
 						tempFractions[op2][i]=round(fraction[i].x)/100
 						
 				#Call the function for the children of the operator
@@ -97,11 +97,11 @@ class LPOptimizer():
 			tempSlowestDevices=copy.deepcopy(slowestDevices)
 			for op in source:
 				for dev in range(numberOfDevices):
-					tempUsedMem[dev]-=round(DQfractions[op][dev]*RRAMDQ*tempFractions[op][dev],2)
-					tempUsedCpu[dev]-=round(DQfractions[op][dev]*RCPUDQ*tempFractions[op][dev],2)
+					tempUsedMem[dev]-=DQfractions[op][dev]*RRAMDQ*fractions[op][dev]
+					tempUsedCpu[dev]-=DQfractions[op][dev]*RCPUDQ*fractions[op][dev]
 			op1=j[0]
 			op2=j[1]
-			availableDevices=len((np.nonzero(tempFractions[op1]))[0])
+			availableDevices=len((np.nonzero(fractions[op1]))[0])
 			if(availableDevices!=1 and op1 not in source and availableDevices!=0):#If more than one devices hold data	
 				slowestDevice=slowestDevices[op1,op2]#Find bottleneck/slowest device
 				betaF=tempFractions[op1][slowestDevice]*0.3#Fraction to remove from bottleneck device (30%)
@@ -111,7 +111,7 @@ class LPOptimizer():
 				tempUsedMem[slowestDevice]=round(tempUsedMem[slowestDevice]-betaF*RMem[op1],2)
 				
 				for k in range(numberOfDevices):#For all the other devices
-					if (tempFractions[op1][k]!=0 and k!=slowestDevice):
+					if (fractions[op1][k]!=0 and k!=slowestDevice):
 						#If the device can handle more data
 						if( (tempUsedCpu[k]+dividedFraction*RCpu[op1]) <=CCpu[k] 
 						and (tempUsedMem[k]+dividedFraction*RMem[op1]) <=CMem[k]):
@@ -175,7 +175,7 @@ class LPOptimizer():
 									#If the device can handle more data
 										if( (tempUsedCpu[k]+dividedFraction*RCpu[i]) <=CCpu[k] 
 										and (tempUsedMem[k]+dividedFraction*RMem[i]) <=CMem[k]):
-											tempFractions[i][k]=round(fractions[i][k]+dividedFraction,2)
+											tempFractions[i][k]=round(tempFractions[i][k]+dividedFraction,2)
 											tempUsedCpu[k]=round(tempUsedCpu[k]+dividedFraction*RCpu[i],2)
 											tempUsedMem[k]=round(tempUsedMem[k]+dividedFraction*RMem[i],2)
 										#If not the source device keeps them
@@ -261,8 +261,8 @@ class LPOptimizer():
 					if(x<0):
 						x=0
 					x=round(x,2)
-					tempUsedCpu[dev]=round(tempUsedCpu[dev]+x*RCPUDQ*tempFractions[op][dev],2)
-					tempUsedMem[dev]=round(tempUsedMem[dev]+x*RRAMDQ*tempFractions[op][dev],2)
+					tempUsedCpu[dev]=tempUsedCpu[dev]+x*RCPUDQ*tempFractions[op][dev]
+					tempUsedMem[dev]=tempUsedMem[dev]+x*RRAMDQ*tempFractions[op][dev]
 					temp.append(x)
 					sum+=tempFractions[op][dev]*x
 				else:
@@ -282,15 +282,9 @@ class LPOptimizer():
 		global tempUsedMem
 		global tempSlowestDevices
 		iterflag=0
-		testS = testSolution(numberOfDevices, numberOfOperators, comCost, alpha,
-							 available, CCpu,
-							 CMem, RCpu, RMem, source, parents,RCPUDQ,RRAMDQ)
-
 		for iterator in range(10):
 			if(iterflag==0):
 				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.latOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath)		
-
-
 				DQfractionPairs=round(DQfraction,3)
 				totalTransferTimePairs=round(totalTransferTime,3)
 				FPairs=round(F,3)
@@ -299,11 +293,7 @@ class LPOptimizer():
 		iterflag=0
 		for iterator in range(10):
 			if(iterflag==0):
-
 				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.qualOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold)
-				testS.checkTransferTime(totalTransferTime, transferTimes, slowestDevices, pairs, paths, fractions)
-				testS.checkCPU(UsedCpu, UsedMem, fractions, DQfractions)
-
 				DQfractionDQ=round(DQfraction,3)
 				totalTransferTimeDQ=round(totalTransferTime,3)
 				FDQ=round(F,3)
