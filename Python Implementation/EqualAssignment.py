@@ -4,9 +4,12 @@
 #	tasks to all avaialable devices.
 #-------------------------------------------#
 
+import copy
+from FindMetrics import findMetricsFun
 
 class EqualAssignment():
-	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,fractions,UsedCpu,UsedMem):
+	'''
+	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild,fractions,UsedCpu,UsedMem):
 		#Find new total time
 		transferTimes={}
 		slowestDevices={}
@@ -45,30 +48,78 @@ class EqualAssignment():
 			counter+=1
 		
 		#Calculate new maximum DQ fraction possible
-		DQfractions={}
-		sum=0
-		for op in source:
-			temp=[]
+		# Calculate new maximum DQ fraction possible
+		DQfractions = {}
+		sum = 0
+		for op in source:  # For each source node
+			sourceTemp = []
+			childTemp = {}
+			sourceSum = 0
+			childSum = 0
+			currUsedCpu = copy.deepcopy(UsedCpu)
+			currUsedMem = copy.deepcopy(UsedMem)
+			currUsedCpuC = copy.deepcopy(UsedCpu)
+			currUsedMemC = copy.deepcopy(UsedMem)
+			# Assignment of dq check only to source devices
 			for dev in range(numberOfDevices):
-				if(available[op][dev]==1 and fractions[op][dev]!=0):
-					a=(CCpu[dev]-UsedCpu[dev])/(RCPUDQ*fractions[op][dev])
-					b=(CMem[dev]-UsedMem[dev])/(RRAMDQ*fractions[op][dev])		
-					if(a<b):
-						x=a
+				if (available[op][dev] == 1 and fractions[op][dev] != 0):
+					a = (CCpu[dev] - currUsedCpu[dev]) / (RCPUDQ * fractions[op][dev])
+					b = (CMem[dev] - currUsedMem[dev]) / (RRAMDQ * fractions[op][dev])
+					if (a < b):
+						x = a
 					else:
-						x=b
-					if(x>1):
-						x=1
-					if(x<0):
-						x=0
-					x=round(x,2)
-					UsedCpu[dev]=UsedCpu[dev]+x*RCPUDQ*fractions[op][dev]
-					UsedMem[dev]=UsedMem[dev]+x*RRAMDQ*fractions[op][dev]
-					temp.append(x)
-					sum+=fractions[op][dev]*x
+						x = b
+					if (x > 1):
+						x = 1
+					if (x < 0):
+						x = 0
+					x = round(x, 2)
+					currUsedCpu[dev] = currUsedCpu[dev] + x * fractions[op][dev] * RCPUDQ
+					currUsedMem[dev] = currUsedMem[dev] + x * fractions[op][dev] * RRAMDQ
+					sourceTemp.append(x)
+					sourceSum += fractions[op][dev] * x
 				else:
-					temp.append(0)
-			DQfractions[op]=temp
+					sourceTemp.append(0)
+
+			# Assignment of dq check to devices that hold fraction of the children nodes
+			for child in sourceChild[op]:
+				childTemp[child] = []
+				for dev in range(numberOfDevices):
+					if (available[child][dev] == 1 and fractions[child][dev] != 0):
+						a = (CCpu[dev] - currUsedCpuC[dev]) / (RCPUDQ * fractions[child][dev])
+						b = (CMem[dev] - currUsedMemC[dev]) / (RRAMDQ * fractions[child][dev])
+						if (a < b):
+							x = a
+						else:
+							x = b
+						if (x > 1):
+							x = 1
+						if (x < 0):
+							x = 0
+						x = round(x, 2)
+						currUsedCpuC[dev] = currUsedCpuC[dev] + x * fractions[child][dev] * RCPUDQ
+						currUsedMemC[dev] = currUsedMemC[dev] + x * fractions[child][dev] * RRAMDQ
+						childTemp[child].append(x)
+						childSum += fractions[child][dev] * x
+					else:
+						childTemp[child].append(0)
+			childSum = childSum / len(sourceChild[op])
+
+			if (childSum > sourceSum):  # If it is beneficial to assing dq check to children nodes
+				for child in sourceChild[op]:
+					DQfractions[child] = copy.deepcopy(childTemp[child])
+					UsedCpu = copy.deepcopy(currUsedCpuC)
+					UsedMem = copy.deepcopy(currUsedMemC)
+				sum += childSum
+			else:  # Else assing dq check to source
+				DQfractions[op] = copy.deepcopy(sourceTemp)
+				UsedCpu = copy.deepcopy(currUsedCpu)
+				UsedMem = copy.deepcopy(currUsedMem)
+				sum += sourceSum
+
+			for dev in range(numberOfDevices):
+				UsedCpu[dev] = round(UsedCpu[dev], 2)
+				UsedMem[dev] = round(UsedMem[dev], 2)
 		DQfraction=(1/noOfSources)*sum
 		if (DQfraction > 1):  # Due to float operations
 			DQfraction = 1
@@ -77,7 +128,7 @@ class EqualAssignment():
 		totalTransferTime=round(totalTransferTime,3)
 		F=round(F,3)
 		return(F,totalTransferTime,DQfraction,UsedCpu,UsedMem,fractions,DQfractions,transferTimes,slowestDevices,slowestPath)
-		
+	'''
 
 	def assignment(self,op,numberOfOperators,pairs,comCost,numberOfDevices,available,RCpu,CCpu,RMem,CMem,parents,fraction,availableDevices,UsedCpu,UsedMem,fractions,notAvailableDevices):
 		flag=0
@@ -119,7 +170,7 @@ class EqualAssignment():
 		return (fractions,UsedCpu,UsedMem,flag)
 	
 	def run(self,numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
-	,paths,source,noOfSources,tempFractions,beta,alpha):
+	,paths,source,sourceChild,noOfSources,tempFractions,beta,alpha):
 		fractions=[]
 		UsedCpu=[]
 		UsedMem=[]
@@ -158,6 +209,14 @@ class EqualAssignment():
 		if(flag==1):#If no solution was found
 			return(0,0,0,0,0,0,0,0,0,0)
 		else:
-			(F,totalTransferTime,DQfraction,UsedCpu,UsedMem,fractions,DQfractions,transferTimes,slowestDevices,slowestPath)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,fractions,UsedCpu,UsedMem)
+			(F, totalTransferTime, DQfraction, DQfractions, UsedCpu, UsedMem, transferTimes,
+			 slowestDevices, slowestPath) = findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources,
+														  beta,
+														  alpha, available, RCPUDQ, RRAMDQ,
+														  CCpu,
+														  CMem, source, sourceChild, fractions,
+														  UsedCpu, UsedMem)
+			#(F,totalTransferTime,DQfraction,UsedCpu,UsedMem,fractions,DQfractions,transferTimes,slowestDevices,slowestPath)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild,fractions,UsedCpu,UsedMem)
+
 			return(DQfraction,totalTransferTime,F,UsedCpu,UsedMem,fractions,transferTimes,slowestDevices,DQfractions,slowestPath)
 

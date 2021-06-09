@@ -10,7 +10,7 @@ import numpy as np
 import copy
 import gurobipy as gp
 from gurobipy import GRB
-
+from FindMetrics import findMetricsFun
 
 class LPOptimizer():
 	global tempFractions
@@ -81,7 +81,7 @@ class LPOptimizer():
 
 
 	#Optimize based on latency
-	def latOpt(self,numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath):
+	def latOpt(self,numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath):
 		iterflag=1		
 		global tempFractions
 		global tempTransferTimes
@@ -95,7 +95,8 @@ class LPOptimizer():
 			tempUsedCpu=copy.deepcopy(UsedCpu)
 			tempUsedMem=copy.deepcopy(UsedMem)
 			tempSlowestDevices=copy.deepcopy(slowestDevices)
-			for op in source:
+			#for op in source:
+			for op in DQfractions:
 				for dev in range(numberOfDevices):
 					tempUsedMem[dev]-=DQfractions[op][dev]*RRAMDQ*fractions[op][dev]
 					tempUsedCpu[dev]-=DQfractions[op][dev]*RCPUDQ*fractions[op][dev]
@@ -124,8 +125,14 @@ class LPOptimizer():
 							tempUsedCpu[slowestDevice]=round(tempUsedCpu[slowestDevice]+dividedFraction*RCpu[op1],2)
 							tempUsedMem[slowestDevice]=round(tempUsedMem[slowestDevice]+dividedFraction*RMem[op1],2)
 				#Enforce changes downstream the DAG
+
 				flag=self.recursivePairsLP(op1,numberOfOperators,pairs,comCost,numberOfDevices,available,RCpu,CCpu,RMem,CMem,parents,0,alpha)
-				(tempF,temptotalTransferTime,tempSlowestPath,TempDQfractions,tempDQfraction)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source)
+
+				(tempF,temptotalTransferTime,tempDQfraction,TempDQfractions,tempUsedCpu,tempUsedMem,tempTransferTimes,tempSlowestDevices,tempSlowestPath)=\
+					findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources, beta, alpha, available, RCPUDQ,
+								   RRAMDQ, CCpu,CMem, source, sourceChild, tempFractions, tempUsedCpu, tempUsedMem)
+				#(tempF,temptotalTransferTime,tempSlowestPath,TempDQfractions,tempDQfraction)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild)
+
 				if(tempF<F and flag==0):#If the solution is beneficial
 					transferTimes=copy.deepcopy(tempTransferTimes)
 					totalTransferTime=temptotalTransferTime
@@ -141,20 +148,23 @@ class LPOptimizer():
 		return(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)
 		
 	#Optimize based on quality
-	def qualOpt(self,numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold):
+	def qualOpt(self,numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold):
 		iterflag=1
 		global tempFractions
 		global tempTransferTimes
 		global tempUsedCpu
 		global tempUsedMem
 		global tempSlowestDevices
-		for op in source:
+		#for op in source:
+
+		for op in DQfractions:
 			tempTransferTimes=copy.deepcopy(transferTimes)
 			tempFractions=copy.deepcopy(fractions)
 			tempUsedCpu=copy.deepcopy(UsedCpu)
 			tempUsedMem=copy.deepcopy(UsedMem)
 			tempSlowestDevices=copy.deepcopy(slowestDevices)
-			for op in source:
+			#for op in source:
+			for op in DQfractions:
 				for dev in range(numberOfDevices):
 					tempUsedMem[dev]-=DQfractions[op][dev]*RRAMDQ*fractions[op][dev]
 					tempUsedCpu[dev]-=DQfractions[op][dev]*RCPUDQ*fractions[op][dev]
@@ -185,7 +195,12 @@ class LPOptimizer():
 											tempUsedMem[dev]=round(tempUsedMem[dev]+dividedFraction*RMem[i],2)
 								#Enforce changes downstream the DAG
 								flag=self.recursivePairsLP(i,numberOfOperators,pairs,comCost,numberOfDevices,available,RCpu,CCpu,RMem,CMem,parents,0,alpha)
-								(tempF,temptotalTransferTime,tempSlowestPath,TempDQfractions,tempDQfraction)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source)
+								(tempF, temptotalTransferTime, tempDQfraction, TempDQfractions, tempUsedCpu, tempUsedMem,tempTransferTimes, tempSlowestDevices, tempSlowestPath) = \
+									findMetricsFun(numberOfDevices,comCost, paths, pairs,noOfSources, beta,alpha, available,
+												RCPUDQ, RRAMDQ,CCpu,CMem, source,sourceChild,tempFractions,
+												tempUsedCpu,tempUsedMem)
+								#(tempF,temptotalTransferTime,tempSlowestPath,TempDQfractions,tempDQfraction)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild)
+
 								if(tempF<F and flag==0):#If the solution is beneficial
 									transferTimes=copy.deepcopy(tempTransferTimes)
 									totalTransferTime=temptotalTransferTime
@@ -200,8 +215,8 @@ class LPOptimizer():
 									iterflag=0
 		return(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)
 		
-		
-	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source):
+	'''
+	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild):
 		global tempFractions
 		global tempTransferTimes
 		global tempUsedCpu
@@ -246,11 +261,19 @@ class LPOptimizer():
 		tempDQfractions={}
 		sum=0
 		for op in source:
-			temp=[]
+			sourceTemp = []
+			childTemp = {}
+			sourceSum = 0
+			childSum = 0
+			currUsedCpu = copy.deepcopy(tempUsedCpu)
+			currUsedMem = copy.deepcopy(tempUsedMem)
+			currUsedCpuC = copy.deepcopy(tempUsedCpu)
+			currUsedMemC = copy.deepcopy(tempUsedMem)
+			# Assignment of dq check only to source devices
 			for dev in range(numberOfDevices):
 				if(available[op][dev]==1 and tempFractions[op][dev]!=0):
-					a=(CCpu[dev]-tempUsedCpu[dev])/(RCPUDQ*tempFractions[op][dev])
-					b=(CMem[dev]-tempUsedMem[dev])/(RRAMDQ*tempFractions[op][dev])
+					a=(CCpu[dev]-currUsedCpu[dev])/(RCPUDQ*tempFractions[op][dev])
+					b=(CMem[dev]-currUsedMem[dev])/(RRAMDQ*tempFractions[op][dev])
 								
 					if(a<b):
 						x=a
@@ -261,21 +284,56 @@ class LPOptimizer():
 					if(x<0):
 						x=0
 					x=round(x,2)
-					tempUsedCpu[dev]=tempUsedCpu[dev]+x*RCPUDQ*tempFractions[op][dev]
-					tempUsedMem[dev]=tempUsedMem[dev]+x*RRAMDQ*tempFractions[op][dev]
-					temp.append(x)
-					sum+=tempFractions[op][dev]*x
+					currUsedCpu[dev]=currUsedCpu[dev]+x*RCPUDQ*tempFractions[op][dev]
+					currUsedMem[dev]=currUsedMem[dev]+x*RRAMDQ*tempFractions[op][dev]
+					sourceTemp.append(x)
+					sourceSum+=tempFractions[op][dev]*x
 				else:
-					temp.append(0)
-			tempDQfractions[op]=temp
+					sourceTemp.append(0)
+			# Assignment of dq check to devices that hold fraction of the children nodes
+			for child in sourceChild[op]:
+				childTemp[child] = []
+				for dev in range(numberOfDevices):
+					if (available[child][dev] == 1 and tempFractions[child][dev] != 0):
+						a = (CCpu[dev] - currUsedCpuC[dev]) / (RCPUDQ * tempFractions[child][dev])
+						b = (CMem[dev] - currUsedMemC[dev]) / (RRAMDQ * tempFractions[child][dev])
+						if (a < b):
+							x = a
+						else:
+							x = b
+						if (x > 1):
+							x = 1
+						if (x < 0):
+							x = 0
+						x = round(x, 2)
+						currUsedCpuC[dev] = currUsedCpuC[dev] + x * tempFractions[child][dev] * RCPUDQ
+						currUsedMemC[dev] = currUsedMemC[dev] + x * tempFractions[child][dev] * RRAMDQ
+						childTemp[child].append(x)
+						childSum += tempFractions[child][dev] * x
+					else:
+						childTemp[child].append(0)
+			childSum = childSum / len(sourceChild[op])
+			if (childSum > sourceSum):  # If it is beneficial to assing dq check to children nodes
+				for child in sourceChild[op]:
+					tempDQfractions[child] = copy.deepcopy(childTemp[child])
+					tempUsedCpu = copy.deepcopy(currUsedCpuC)
+					tempUsedMem = copy.deepcopy(currUsedMemC)
+				sum += childSum
+			else:  # Else assing dq check to source
+				tempDQfractions[op] = copy.deepcopy(sourceTemp)
+				tempUsedCpu = copy.deepcopy(currUsedCpu)
+				tempUsedMem = copy.deepcopy(currUsedMem)
+				sum += sourceSum
+
 		tempDQfraction=(1/noOfSources)*sum
 		if (tempDQfraction > 1):  # Due to float operations
 			tempDQfraction = 1
 		tempF=temptotalTransferTime/(1+beta*tempDQfraction)
 		return(tempF,temptotalTransferTime,tempSlowestPath,tempDQfractions,tempDQfraction)
-	
+	'''
+
 	def run(self,numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
-	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,DQfraction,totalTransferTime,F,beta,alpha,slowestPath,qThreshold):
+	,paths,source,sourceChild,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,DQfraction,totalTransferTime,F,beta,alpha,slowestPath,qThreshold):
 		global tempFractions
 		global tempTransferTimes
 		global tempUsedCpu
@@ -284,20 +342,22 @@ class LPOptimizer():
 		iterflag=0
 		for iterator in range(10):
 			if(iterflag==0):
-				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.latOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath)		
+				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.latOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath)
 				DQfractionPairs=round(DQfraction,3)
 				totalTransferTimePairs=round(totalTransferTime,3)
 				FPairs=round(F,3)
 			else:#If no solution is found break
 				break;
 		iterflag=0
+
 		for iterator in range(10):
 			if(iterflag==0):
-				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.qualOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold)
+				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.qualOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold)
 				DQfractionDQ=round(DQfraction,3)
 				totalTransferTimeDQ=round(totalTransferTime,3)
 				FDQ=round(F,3)
 			else:#If no solution is found break
 				break;
-		return(DQfractionPairs,totalTransferTimePairs,FPairs,DQfractionDQ,totalTransferTimeDQ,FDQ)#If no better solution is find it returns the initial one
+
+		return(DQfractionPairs,totalTransferTimePairs,FPairs,DQfractionDQ,totalTransferTimeDQ,FDQ)#If no better solution is found it returns the initial one
 

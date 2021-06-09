@@ -8,7 +8,7 @@
 
 from scipy.spatial import distance
 import copy
-
+from FindMetrics import findMetricsFun
 
 class HeuristicForSpring():
 	global tempFractions
@@ -17,11 +17,13 @@ class HeuristicForSpring():
 	global tempUsedMem
 	global closest_executor
 	global placement
-	
+
+
 	def closest_executor(operator, executors):#Finds the closest device to the operator
 		closest_index = distance.cdist([operator], executors).argmin()
 		return closest_index
-	
+
+
 	def placement(operatorPositions,currExecutorPositions,node,RCpu,CCpu,RMem,CMem,UsedCpu,UsedMem,available,fraction,fractions,flag,fractionToAssign,slowestDevice):#Places operators to devices
 		if(currExecutorPositions[1:] == currExecutorPositions[:-1]):#No placement available
 				flag=1
@@ -58,8 +60,8 @@ class HeuristicForSpring():
 			currExecutorPositions[closest]=[100000,100000,100000]
 			(fractions,UsedCpu,UsedMem,flag)=placement(operatorPositions,currExecutorPositions,node,RCpu,CCpu,RMem,CMem,UsedCpu,UsedMem,available,fraction,fractions,flag,fractionToAssign,slowestDevice)
 		return fractions,UsedCpu,UsedMem,flag
-		
-	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source):
+	'''	
+	def findMetrics(self,numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild):
 		global tempFractions
 		global tempTransferTimes
 		global tempUsedCpu
@@ -104,11 +106,18 @@ class HeuristicForSpring():
 		tempDQfractions={}
 		sum=0
 		for op in source:
-			temp=[]
+			sourceTemp = []
+			childTemp = {}
+			sourceSum = 0
+			childSum = 0
+			currUsedCpu = copy.deepcopy(tempUsedCpu)
+			currUsedMem = copy.deepcopy(tempUsedMem)
+			currUsedCpuC = copy.deepcopy(tempUsedCpu)
+			currUsedMemC = copy.deepcopy(tempUsedMem)
 			for dev in range(numberOfDevices):
 				if(available[op][dev]==1 and tempFractions[op][dev]!=0):
-					a=(CCpu[dev]-tempUsedCpu[dev])/(RCPUDQ*tempFractions[op][dev])
-					b=(CMem[dev]-tempUsedMem[dev])/(RRAMDQ*tempFractions[op][dev])
+					a=(CCpu[dev]-currUsedCpu[dev])/(RCPUDQ*tempFractions[op][dev])
+					b=(CMem[dev]-currUsedMem[dev])/(RRAMDQ*tempFractions[op][dev])
 					if(a<b):
 						x=a
 					else:
@@ -118,21 +127,56 @@ class HeuristicForSpring():
 					if(x<0):
 						x=0
 					x=round(x,2)
-					tempUsedCpu[dev]=tempUsedCpu[dev]+x*RCPUDQ*tempFractions[op][dev]
-					tempUsedMem[dev]=tempUsedMem[dev]+x*RRAMDQ*tempFractions[op][dev]
-					temp.append(x)
-					sum+=tempFractions[op][dev]*x
+					currUsedCpu[dev]=currUsedCpu[dev]+x*RCPUDQ*tempFractions[op][dev]
+					currUsedMem[dev]=currUsedMem[dev]+x*RRAMDQ*tempFractions[op][dev]
+					sourceTemp.append(x)
+					sourceSum+=tempFractions[op][dev]*x
 				else:
-					temp.append(0)
-			tempDQfractions[op]=temp
+					sourceTemp.append(0)
+
+			# Assignment of dq check to devices that hold fraction of the children nodes
+			for child in sourceChild[op]:
+				childTemp[child] = []
+				for dev in range(numberOfDevices):
+					if (available[child][dev] == 1 and tempFractions[child][dev] != 0):
+						a = (CCpu[dev] - currUsedCpuC[dev]) / (RCPUDQ * tempFractions[child][dev])
+						b = (CMem[dev] - currUsedMemC[dev]) / (RRAMDQ * tempFractions[child][dev])
+						if (a < b):
+							x = a
+						else:
+							x = b
+						if (x > 1):
+							x = 1
+						if (x < 0):
+							x = 0
+						x = round(x, 2)
+						currUsedCpuC[dev] = currUsedCpuC[dev] + x * tempFractions[child][dev] * RCPUDQ
+						currUsedMemC[dev] = currUsedMemC[dev] + x * tempFractions[child][dev] * RRAMDQ
+						childTemp[child].append(x)
+						childSum += tempFractions[child][dev] * x
+					else:
+						childTemp[child].append(0)
+			childSum = childSum / len(sourceChild[op])
+			if (childSum > sourceSum):  # If it is beneficial to assing dq check to children nodes
+				for child in sourceChild[op]:
+					tempDQfractions[child] = copy.deepcopy(childTemp[child])
+					tempUsedCpu = copy.deepcopy(currUsedCpuC)
+					tempUsedMem = copy.deepcopy(currUsedMemC)
+				sum += childSum
+			else:  # Else assing dq check to source
+				tempDQfractions[op] = copy.deepcopy(sourceTemp)
+				tempUsedCpu = copy.deepcopy(currUsedCpu)
+				tempUsedMem = copy.deepcopy(currUsedMem)
+				sum += sourceSum
+
 		tempDQfraction=(1/noOfSources)*sum
 		if (tempDQfraction > 1):  # Due to float operations
 			tempDQfraction = 1
 		tempF=temptotalTransferTime/(1+beta*tempDQfraction)
 		return(tempF,temptotalTransferTime,tempSlowestPath,tempDQfractions,tempDQfraction)
-		
+	'''
 	def run(self,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs
-	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,F,beta,alpha,executorPositions,operatorPositions):
+	,paths,source,sourceChild,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,F,beta,alpha,executorPositions,operatorPositions):
 		global tempFractions
 		global tempTransferTimes
 		global tempUsedCpu
@@ -162,7 +206,8 @@ class HeuristicForSpring():
 				tempUsedMem[i]=tempUsedMem[i]-fractions[bottleneckOperator][i]*RMem[bottleneckOperator]
 			tempFractions=copy.deepcopy(fractions)
 			#Remove DQ fraction from sources in order to re-decide it based on new placement of the bottleneck operator
-			for op in source:
+			#for op in source:
+			for op in DQfractions:
 				for dev in range(numberOfDevices):
 					tempUsedMem[dev]-=DQfractions[op][dev]*RRAMDQ*fractions[op][dev]
 					tempUsedCpu[dev]-=DQfractions[op][dev]*RCPUDQ*fractions[op][dev]
@@ -170,7 +215,15 @@ class HeuristicForSpring():
 			fractionToAssign=fractions[bottleneckOperator][slowestDevice]-fractions[bottleneckOperator][slowestDevice]*0.3
 			#Place bottleneck operator
 			(tempFractions[bottleneckOperator],tempUsedCpu,tempUsedMem,flag)=placement(operatorPositions[bottleneckOperator],tempExecutorPositions,bottleneckOperator,RCpu,CCpu,RMem,CMem,tempUsedCpu,tempUsedMem,available,1,tempFractions[bottleneckOperator],0,fractionToAssign,slowestDevice)
-			(tempF,temptotalTransferTime,tempSlowestPath,TempDQfractions,tempDQfraction)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source)#Find new metrics
+			(tempF, temptotalTransferTime, tempDQfraction, TempDQfractions, tempUsedCpu, tempUsedMem, tempTransferTimes,
+			 tempSlowestDevices, tempSlowestPath) = findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources, beta,
+															alpha, available, RCPUDQ, RRAMDQ,
+															CCpu,
+															CMem, source, sourceChild, tempFractions,
+															tempUsedCpu, tempUsedMem)
+			#(tempF,temptotalTransferTime,tempSlowestPath,TempDQfractions,tempDQfraction)=self.findMetrics(numberOfDevices,comCost,paths,pairs,noOfSources,beta,alpha,available,RCPUDQ,RRAMDQ,CCpu,CMem,source,sourceChild)#Find new metrics
+
+
 			if(tempF<F and flag==0):#If the solution is beneficial
 				transferTimes=copy.deepcopy(tempTransferTimes)
 				totalTransferTime=temptotalTransferTime

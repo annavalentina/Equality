@@ -10,14 +10,16 @@ from scipy.spatial import distance
 import numpy as np
 import copy
 from HeuristicForSpring import HeuristicForSpring
+from FindMetrics import findMetricsFun
 
 class SpringRelaxation():
 	global closest_executor
 	global placement
+
 	def closest_executor(operator, executors):#Finds the closest device to the operator
 		closest_index = distance.cdist([operator], executors).argmin()
 		return closest_index
-	
+
 	def placement(operatorPositions,currExecutorPositions,node,RCpu,CCpu,RMem,CMem,UsedCpu,UsedMem,available,fraction,fractions,flag):#Places operators to devices
 		if(currExecutorPositions[1:] == currExecutorPositions[:-1]):#No placement available
 				flag=1
@@ -49,7 +51,7 @@ class SpringRelaxation():
 			(fractions,UsedCpu,UsedMem,flag)=placement(operatorPositions,currExecutorPositions,node,RCpu,CCpu,RMem,CMem,UsedCpu,UsedMem,available,fraction,fractions,flag)
 		return fractions,UsedCpu,UsedMem,flag
 			
-	def run(self,numberOfDevices,comCost,numberOfOperators,paths,pairs,source,children,parents,RCpu,RMem,CCpu,CMem,available
+	def run(self,numberOfDevices,comCost,numberOfOperators,paths,pairs,source,sourceChild,children,parents,RCpu,RMem,CCpu,CMem,available
 	,tempFractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha):
 		#Run vivaldi algorithm to create cost space for devices
 		h=VivaldyMain()
@@ -118,8 +120,16 @@ class SpringRelaxation():
 			return(0,0,0)
 		
 		else:
-			transferTimes={}
-			slowestDevices={}
+			#transferTimes={}
+			#slowestDevices={}
+			(FSpring, totalTransferTimeSpring, DQfractionSpring, DQfractions, UsedCpu, UsedMem, transferTimes,
+			slowestDevices, slowestPath) = findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources,
+																beta,
+																alpha, available, RCPUDQ, RRAMDQ,
+																CCpu,
+																CMem, source, sourceChild, fractions,
+																UsedCpu, UsedMem)
+			'''
 			#Find new total time
 			for j in pairs:#Find cost of each pair
 				op1=j[0]
@@ -156,31 +166,73 @@ class SpringRelaxation():
 				counter+=1
 
 			#Calculate new maximum DQ fraction possible
-			DQfractions={}
-			sum=0
-			for op in source:
-				temp=[]
+			DQfractions = {}
+			sum = 0
+			for op in source:  # For each source node
+				sourceTemp = []
+				childTemp = {}
+				sourceSum = 0
+				childSum = 0
+				currUsedCpu = copy.deepcopy(UsedCpu)
+				currUsedMem = copy.deepcopy(UsedMem)
+				currUsedCpuC = copy.deepcopy(UsedCpu)
+				currUsedMemC = copy.deepcopy(UsedMem)
+				# Assignment of dq check only to source devices
 				for dev in range(numberOfDevices):
-					if(available[op][dev]==1 and fractions[op][dev]!=0):
-						a=(CCpu[dev]-UsedCpu[dev])/(RCPUDQ*fractions[op][dev])
-						b=(CMem[dev]-UsedMem[dev])/(RRAMDQ*fractions[op][dev])
-						if(a<b):
-							x=a
+					if (available[op][dev] == 1 and fractions[op][dev] != 0):
+						a = (CCpu[dev] - currUsedCpu[dev]) / (RCPUDQ * fractions[op][dev])
+						b = (CMem[dev] - currUsedMem[dev]) / (RRAMDQ * fractions[op][dev])
+						if (a < b):
+							x = a
 						else:
-							x=b
-						if(x>1):
-							x=1
-						if(x<0):
-							x=0
-						x=round(x,2)
-						UsedCpu[dev]=UsedCpu[dev]+x*fractions[op][dev]*RCPUDQ
-						UsedMem[dev]=UsedMem[dev]+x*fractions[op][dev]*RRAMDQ
-						temp.append(x)
-						sum+=fractions[op][dev]*x
+							x = b
+						if (x > 1):
+							x = 1
+						if (x < 0):
+							x = 0
+						x = round(x, 2)
+						currUsedCpu[dev] = currUsedCpu[dev] + x * fractions[op][dev] * RCPUDQ
+						currUsedMem[dev] = currUsedMem[dev] + x * fractions[op][dev] * RRAMDQ
+						sourceTemp.append(x)
+						sourceSum += fractions[op][dev] * x
 					else:
-						temp.append(0)
-			
-				DQfractions[op]=temp
+						sourceTemp.append(0)
+
+				# Assignment of dq check to devices that hold fraction of the children nodes
+				for child in sourceChild[op]:
+					childTemp[child] = []
+					for dev in range(numberOfDevices):
+						if (available[child][dev] == 1 and fractions[child][dev] != 0):
+							a = (CCpu[dev] - currUsedCpuC[dev]) / (RCPUDQ * fractions[child][dev])
+							b = (CMem[dev] - currUsedMemC[dev]) / (RRAMDQ * fractions[child][dev])
+							if (a < b):
+								x = a
+							else:
+								x = b
+							if (x > 1):
+								x = 1
+							if (x < 0):
+								x = 0
+							x = round(x, 2)
+							currUsedCpuC[dev] = currUsedCpuC[dev] + x * fractions[child][dev] * RCPUDQ
+							currUsedMemC[dev] = currUsedMemC[dev] + x * fractions[child][dev] * RRAMDQ
+							childTemp[child].append(x)
+							childSum += fractions[child][dev] * x
+						else:
+							childTemp[child].append(0)
+				childSum = childSum / len(sourceChild[op])
+
+				if (childSum > sourceSum):  # If it is beneficial to assing dq check to children nodes
+					for child in sourceChild[op]:
+						DQfractions[child] = copy.deepcopy(childTemp[child])
+						UsedCpu = copy.deepcopy(currUsedCpuC)
+						UsedMem = copy.deepcopy(currUsedMemC)
+					sum += childSum
+				else:  # Else assing dq check to source
+					DQfractions[op] = copy.deepcopy(sourceTemp)
+					UsedCpu = copy.deepcopy(currUsedCpu)
+					UsedMem = copy.deepcopy(currUsedMem)
+					sum += sourceSum
 			
 			for dev in range(numberOfDevices):
 				UsedCpu[dev]=round(UsedCpu[dev],2)
@@ -193,20 +245,20 @@ class SpringRelaxation():
 			DQfractionSpring=round(DQfraction,3)
 			totalTransferTimeSrping=round(totalTransferTime,3)
 			FSpring=round(F,3)
-			
+			'''
 			#Run heuristics
 			hs=HeuristicForSpring()
 
 
 
-			(DQfractionSpringH,totalTransferTimeSrpingH,FSpringH)=hs.run(numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs
-	,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,F,beta,alpha,executorPositions,operatorPositions)
+			(DQfractionSpringH,totalTransferTimeSpringH,FSpringH)=hs.run(numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs
+	,paths,source,sourceChild,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,FSpring,beta,alpha,executorPositions,operatorPositions)
 			if(FSpringH<0 or FSpring<0):#If no solution was found
 				return(0,0,0)
 			elif(FSpringH!=0):#If the heuristics solution is better
-				return(DQfractionSpringH,totalTransferTimeSrpingH,FSpringH)
+				return(DQfractionSpringH,totalTransferTimeSpringH,FSpringH)
 			else:#Return the initial Spring Relaxation solution
-				return(DQfractionSpring,totalTransferTimeSrping,FSpring)
+				return(DQfractionSpring,totalTransferTimeSpring,FSpring)
 			
 		
 	

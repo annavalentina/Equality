@@ -16,29 +16,31 @@ from DAGCreator import DAGCreator
 from SpringRelaxation import SpringRelaxation
 from EqualAssignment import EqualAssignment
 import sys
+from FindMetrics import findMetricsFun
 
 class Equality():
-	def divideNumber(parts):#Function to divide a random into n unequal parts
-		sumPercentages=0
-		while(sumPercentages==0):
-			randomPercentages=[]
-			dividedNumberParts=[]
+
+	def divideNumber(parts):  # Function to divide a random into n unequal parts
+		sumPercentages = 0
+		while (sumPercentages == 0):
+			randomPercentages = []
+			dividedNumberParts = []
 			for i in range(parts):
-				if(random.randint(0,5)>3):
-					randomPercentages.append(random.randint(0,10))
-					sumPercentages+=randomPercentages[i]
+				if (random.randint(0, 5) > 3):
+					randomPercentages.append(random.randint(0, 10))
+					sumPercentages += randomPercentages[i]
 				else:
 					randomPercentages.append(0)
 		for i in range(parts):
-			dividedNumberParts.append(round(randomPercentages[i]/sumPercentages,2))
+			dividedNumberParts.append(round(randomPercentages[i] / sumPercentages, 2))
 		return dividedNumberParts
-		
+
 	global numberOfDevices	
 
 	#ARG1:number of operators-tested values: 5, 10, 15
 	#ARG2:beta for F formula-tested values: 0.5, 1, 1.5, 2, 3 
 	#ARG3:alpha penalty (the bigger the value the smaller the penalty)-tested values: 5, 10
-	#ARG4:threshold for qualOpt-tested values: 075, 0.8, 0.85, 0.9, 0.95
+	#ARG4:threshold for qualOpt-tested values: 0.75, 0.8, 0.85, 0.9, 0.95
 	#ARG5:number of iterations
 	f = open("FExp.txt", "a")
 	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", iterations="+sys.argv[5]+"\n")
@@ -68,7 +70,7 @@ class Equality():
 	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
 	f.close()
 	#DEFINE GRAPH
-	for iter1 in range(0,8):
+	for iter1 in range(2,3):
 		if (iter1 == 5):
 			f = open("F.txt", "a")
 			f.write("Replicated" + "\n")
@@ -166,10 +168,10 @@ class Equality():
 				dag=DAGCreator("S",numberOfOperators)
 			else:
 				dag = DAGCreator("M", iter1)
-			(paths,pairs,source,sink,children,parents,numberOfOperators,noOfSources)=dag.run()
-			
-			numberOfDevices=numberOfOperators*5
-			
+			(paths,pairs,source,sink,children,parents,numberOfOperators,noOfSources,sourceChild)=dag.run()
+
+			#numberOfDevices=numberOfOperators*5
+			numberOfDevices=5
 			#Set constraints
 			#Communication cost between devices (random)
 			meancomCost=0
@@ -191,22 +193,23 @@ class Equality():
 			RCpu=[]
 			RMem=[]
 			for i in range(numberOfOperators):
-				RCpu.append(round(random.uniform(10, 100),2))
-				RMem.append(random.randint(100, 1000))
+				RCpu.append(round(random.uniform(5, 100),2))
+				RMem.append(random.randint(50, 1000))
 			RCPUDQ=round(random.uniform(10, 100),2)
 			RRAMDQ=random.randint(100, 1000)
-	
+
 			#Characteristics of devices
 			CCpu=[]
 			CMem=[]
 			UsedCpu=[]
 			UsedMem=[]
 			for i in range(numberOfDevices):
-				CCpu.append(round(random.uniform(10, 100),2))
-				CMem.append(random.randint(100, 1000))
+				CCpu.append(round(random.uniform(100, 500),2))
+				CMem.append(random.randint(1000, 5000))
 				UsedCpu.append(0)
 				UsedMem.append(0)
-				
+			#print(RMem, CMem)
+			#print(RCpu, CCpu)
 			beta=float(sys.argv[2])#For F formula
 			alpha=meancomCost/int(sys.argv[3])#Penalty
 			
@@ -246,11 +249,11 @@ class Equality():
 					
 			#Spring relaxation
 			sr=SpringRelaxation()
-			(DQfractionSpring,totalTransferTimeSrping,FSpring)=sr.run(numberOfDevices,comCost,numberOfOperators,paths,pairs,source,children,parents,RCpu,RMem,CCpu,CMem,available,fractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha)
+			(DQfractionSpring,totalTransferTimeSrping,FSpring)=sr.run(numberOfDevices,comCost,numberOfOperators,paths,pairs,source,sourceChild,children,parents,RCpu,RMem,CCpu,CMem,available,fractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha)
 
 			#Εqual distribution
 			eq=EqualAssignment()
-			(DQfractionEQ,totalTransferTimeEQ,FEQ,UsedCpuEQ,UsedMemEQ,fractionsEQ,transferTimesEQ,slowestDevicesEQ,DQfractionsEQ,slowestPathEQ)=eq.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents,paths,source,noOfSources,fractions,beta,alpha)
+			(DQfractionEQ,totalTransferTimeEQ,FEQ,UsedCpuEQ,UsedMemEQ,fractionsEQ,transferTimesEQ,slowestDevicesEQ,DQfractionsEQ,slowestPathEQ)=eq.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents,paths,source,sourceChild,noOfSources,fractions,beta,alpha)
 			
 			#LP initial solution
 			transferTimes={}
@@ -305,6 +308,10 @@ class Equality():
 			
 					
 			if(solved!=-1 ):#If a solution was found by LP
+				(F,totalTransferTime,DQfraction,DQfractions,usedCpu,usedMem,transferTimes,slowestDevices,slowestPath)=findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources, beta, alpha, available, RCPUDQ, RRAMDQ,
+							CCpu,
+							CMem, source, sourceChild, fractions, UsedCpu, UsedMem)
+				'''
 				#Find new total time
 				for j in pairs:#Find cost of each pair
 					op1=j[0]
@@ -342,14 +349,17 @@ class Equality():
 					counter+=1
 		
 				#Calculate new maximum DQ fraction possible
-				DQfractions={}
+
+				DQfractionsOnlySources={}
+				currUsedCpuOnlySources=copy.deepcopy(UsedCpu)
+				currUsedMemOnlySources = copy.deepcopy(UsedMem)
 				sum=0
 				for op in source:
 					temp=[]
 					for dev in range(numberOfDevices):
 						if(available[op][dev]==1 and fractions[op][dev]!=0):
-							a=(CCpu[dev]-UsedCpu[dev])/(RCPUDQ*fractions[op][dev])
-							b=(CMem[dev]-UsedMem[dev])/(RRAMDQ*fractions[op][dev])
+							a=(CCpu[dev]-currUsedCpuOnlySources[dev])/(RCPUDQ*fractions[op][dev])
+							b=(CMem[dev]-currUsedMemOnlySources[dev])/(RRAMDQ*fractions[op][dev])
 							if(a<b):
 								x=a
 							else:
@@ -359,30 +369,110 @@ class Equality():
 							if(x<0):
 								x=0
 							x=round(x,2)
-							UsedCpu[dev]=UsedCpu[dev]+x*fractions[op][dev]*RCPUDQ
-							UsedMem[dev]=UsedMem[dev]+x*fractions[op][dev]*RRAMDQ
+							currUsedCpuOnlySources[dev]=currUsedCpuOnlySources[dev]+x*fractions[op][dev]*RCPUDQ
+							currUsedMemOnlySources[dev]=currUsedMemOnlySources[dev]+x*fractions[op][dev]*RRAMDQ
 							temp.append(x)
 							sum+=fractions[op][dev]*x
 						else:
 							temp.append(0)
-					DQfractions[op]=temp
+					DQfractionsOnlySources[op]=temp
+				DQfractionOnlySources = 1 / noOfSources * sum
+				if (DQfractionOnlySources > 1):  # Due to float operations
+					DQfractionOnlySources = 1
+				FOnlySources = totalTransferTime / (1 + beta * DQfractionOnlySources)
+				DQfractionOnlySources = round(DQfractionOnlySources, 3)
+				#totalTransferTime = round(totalTransferTime, 3)
+				FOnlySources = round(FOnlySources, 3)
+
+
+				DQfractions={}
+				sum=0
+				for op in source:#For each source node
+					sourceTemp=[]
+					childTemp={}
+					sourceSum=0
+					childSum=0
+					currUsedCpu=copy.deepcopy(UsedCpu)
+					currUsedMem=copy.deepcopy(UsedMem)
+					currUsedCpuC = copy.deepcopy(UsedCpu)
+					currUsedMemC = copy.deepcopy(UsedMem)
+					#Assignment of dq check only to source devices
+					for dev in range(numberOfDevices):
+						if(available[op][dev]==1 and fractions[op][dev]!=0):
+							a=(CCpu[dev]-currUsedCpu[dev])/(RCPUDQ*fractions[op][dev])
+							b=(CMem[dev]-currUsedMem[dev])/(RRAMDQ*fractions[op][dev])
+							if(a<b):
+								x=a
+							else:
+								x=b
+							if(x>1):
+								x=1
+							if(x<0):
+								x=0
+							x=round(x,2)
+							currUsedCpu[dev]=currUsedCpu[dev]+x*fractions[op][dev]*RCPUDQ
+							currUsedMem[dev]=currUsedMem[dev]+x*fractions[op][dev]*RRAMDQ
+							sourceTemp.append(x)
+							sourceSum+=fractions[op][dev]*x
+						else:
+							sourceTemp.append(0)
+
+					#Assignment of dq check to devices that hold fraction of the children nodes
+					for child in sourceChild[op]:
+						childTemp[child]=[]
+						for dev in range(numberOfDevices):
+							if (available[child][dev] == 1 and fractions[child][dev] != 0):
+								a = (CCpu[dev] - currUsedCpuC[dev]) / (RCPUDQ * fractions[child][dev])
+								b = (CMem[dev] - currUsedMemC[dev]) / (RRAMDQ * fractions[child][dev])
+								if (a < b):
+									x = a
+								else:
+									x = b
+								if (x > 1):
+									x = 1
+								if (x < 0):
+									x = 0
+								x = round(x, 2)
+								currUsedCpuC[dev] = currUsedCpuC[dev] + x * fractions[child][dev] * RCPUDQ
+								currUsedMemC[dev] = currUsedMemC[dev] + x * fractions[child][dev] * RRAMDQ
+								childTemp[child].append(x)
+								childSum += fractions[child][dev] * x
+							else:
+								childTemp[child].append(0)
+					childSum=childSum/len(sourceChild[op])
+
+					if(childSum>sourceSum):#If it is beneficial to assing dq check to children nodes
+						for child in sourceChild[op]:
+							DQfractions[child]=copy.deepcopy(childTemp[child])
+							UsedCpu=copy.deepcopy(currUsedCpuC)
+							UsedMem=copy.deepcopy(currUsedMemC)
+						sum+=childSum
+					else:#Else assing dq check to source
+						DQfractions[op] = copy.deepcopy(sourceTemp)
+						UsedCpu = copy.deepcopy(currUsedCpu)
+						UsedMem = copy.deepcopy(currUsedMem)
+						sum+=sourceSum
+
 				for dev in range(numberOfDevices):
 					UsedCpu[dev]=round(UsedCpu[dev],2)
 					UsedMem[dev]=round(UsedMem[dev],2)
 				DQfraction=1/noOfSources*sum
+
 				if(DQfraction>1):#Due to float operations
 					DQfraction=1
 				F=totalTransferTime/(1+beta*DQfraction)
 				DQfraction=round(DQfraction,3)
 				totalTransferTime=round(totalTransferTime,3)
 				F=round(F,3)
-				
+				'''
+				#print(DQfraction,F,totalTransferTime)
+
 				#Call optimizer and find best solution
 				lpopt=LPOptimizer()
 				if(FEQ<F and FEQ!=0):#If equal found a better solution than LP
 					#Call optimizer using equal solution
 					(DQfractionLat,totalTransferTimeLat,FLat,DQfractionQual,totalTransferTimeQual,FQual)=lpopt.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpuEQ,UsedMemEQ,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
-,paths,source,noOfSources,fractionsEQ,transferTimesEQ,slowestDevicesEQ,DQfractionsEQ,DQfractionEQ,totalTransferTimeEQ,FEQ,beta,alpha,slowestPathEQ,qThreshold)
+,paths,source,sourceChild,noOfSources,fractionsEQ,transferTimesEQ,slowestDevicesEQ,DQfractionsEQ,DQfractionEQ,totalTransferTimeEQ,FEQ,beta,alpha,slowestPathEQ,qThreshold)
 					if(FSpring<FLat and FSpring<FQual and FSpring!=0):#If Spring Relaxation found a better solution than qualOpt and latOpt the problem is solved by Spring Relaxation
 						solvedBy="Spring"
 					else:#Else the problem is solved by Equal assignment
@@ -390,12 +480,14 @@ class Equality():
 				else:#If LP is better than equal
 					#Call optimizer using LP solution
 					(DQfractionLat,totalTransferTimeLat,FLat,DQfractionQual,totalTransferTimeQual,FQual)=lpopt.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
-,paths,source,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,DQfraction,totalTransferTime,F,beta,alpha,slowestPath,qThreshold)
+,paths,source,sourceChild,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,DQfraction,totalTransferTime,F,beta,alpha,slowestPath,qThreshold)
 					if(FSpring<FLat and FSpring<FQual and FSpring!=0):#If Spring Relaxation found a better solution than qualOpt and latOpt the problem is solved by Spring Relaxation
 						solvedBy="Spring"
 					else:#Else the problem is solved by LP
 						solvedBy="LP"
+
 			else:#Id LP found no solution
+				'''
 				if(FEQ!=0):#If Equal found a solution
 					#Call optimizer using equal solution
 					(DQfractionLat,totalTransferTimeLat,FLat,DQfractionQual,totalTransferTimeQual,FQual)=lpopt.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpuEQ,UsedMemEQ,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
@@ -415,10 +507,11 @@ class Equality():
 						solvedBy="Spring"
 					else:#Else the problem is not solved 
 						solvedBy="None"
+				'''
 				F=0
 				DQfraction=0
 				totalTransferTime=0
-
+			'''
 			f = open("F.txt", "a")
 			f.write("LP: "+ str(F)+", Spring: "+str(FSpring)+", latOpt: "+ str(FLat)+ ", qualOpt: "+str(FQual)+ ", Equal: " +str(FEQ)+", solved by: "+solvedBy+"\n")
 			f.close()
@@ -438,6 +531,6 @@ class Equality():
 			f = open("timeExp.txt", "a")
 			f.write(str(totalTransferTime) + " " + str(totalTransferTimeSrping) + " " + str(totalTransferTimeLat) + " " + str(totalTransferTimeQual) + " " + str(totalTransferTimeEQ) + " " + solvedBy + "\n")
 			f.close()
-			
+			'''
 
 	
