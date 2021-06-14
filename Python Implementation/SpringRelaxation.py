@@ -52,7 +52,7 @@ class SpringRelaxation():
 		return fractions,UsedCpu,UsedMem,flag
 			
 	def run(self,numberOfDevices,comCost,numberOfOperators,paths,pairs,source,sourceChild,children,parents,RCpu,RMem,CCpu,CMem,available
-	,tempFractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha):
+	,tempFractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha,DQMode):
 		#Run vivaldi algorithm to create cost space for devices
 		h=VivaldyMain()
 		executorPositions=h.run(numberOfDevices,comCost)
@@ -120,139 +120,19 @@ class SpringRelaxation():
 			return(0,0,0)
 		
 		else:
-			#transferTimes={}
-			#slowestDevices={}
 			(FSpring, totalTransferTimeSpring, DQfractionSpring, DQfractions, UsedCpu, UsedMem, transferTimes,
 			slowestDevices, slowestPath) = findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources,
 																beta,
 																alpha, available, RCPUDQ, RRAMDQ,
 																CCpu,
 																CMem, source, sourceChild, fractions,
-																UsedCpu, UsedMem)
-			'''
-			#Find new total time
-			for j in pairs:#Find cost of each pair
-				op1=j[0]
-				op2=j[1]
-				max=-1
-				sum=0
-				slowest=-1
-				#Find total number of enabled links (communication between devices)
-				for dev1 in range(numberOfDevices):#Find total cost
-					enabledLinks = 0
-					for dev2 in range(numberOfDevices):
-						if (fractions[op1][dev1] != 0 and fractions[op2][dev2] != 0 and dev1 != dev2):
-							enabledLinks += 1
-						sum = sum + (fractions[op1][dev1] * pairs[op1, op2] * comCost[dev1][dev2] * fractions[op2][dev2])
-					sum = sum + alpha * enabledLinks#Penalty in case of multiple communication links enabled
-					if(sum>max):
-						max=sum
-						slowest=dev1
-					sum=0
-				transferTimes[(op1,op2)]=round(max,3)
-				slowestDevices[(op1,op2)]=slowest
-				
-			#Find slowest path
-			slowestPath=-1
-			counter=0
-			totalTransferTime=0
-			for path in paths:
-				transTime=0
-				for i in range(len(path)-1):
-					transTime=transTime+transferTimes[path[i],path[i+1]]
-				if(transTime>totalTransferTime):
-					totalTransferTime=transTime
-					slowestPath=counter
-				counter+=1
-
-			#Calculate new maximum DQ fraction possible
-			DQfractions = {}
-			sum = 0
-			for op in source:  # For each source node
-				sourceTemp = []
-				childTemp = {}
-				sourceSum = 0
-				childSum = 0
-				currUsedCpu = copy.deepcopy(UsedCpu)
-				currUsedMem = copy.deepcopy(UsedMem)
-				currUsedCpuC = copy.deepcopy(UsedCpu)
-				currUsedMemC = copy.deepcopy(UsedMem)
-				# Assignment of dq check only to source devices
-				for dev in range(numberOfDevices):
-					if (available[op][dev] == 1 and fractions[op][dev] != 0):
-						a = (CCpu[dev] - currUsedCpu[dev]) / (RCPUDQ * fractions[op][dev])
-						b = (CMem[dev] - currUsedMem[dev]) / (RRAMDQ * fractions[op][dev])
-						if (a < b):
-							x = a
-						else:
-							x = b
-						if (x > 1):
-							x = 1
-						if (x < 0):
-							x = 0
-						x = round(x, 2)
-						currUsedCpu[dev] = currUsedCpu[dev] + x * fractions[op][dev] * RCPUDQ
-						currUsedMem[dev] = currUsedMem[dev] + x * fractions[op][dev] * RRAMDQ
-						sourceTemp.append(x)
-						sourceSum += fractions[op][dev] * x
-					else:
-						sourceTemp.append(0)
-
-				# Assignment of dq check to devices that hold fraction of the children nodes
-				for child in sourceChild[op]:
-					childTemp[child] = []
-					for dev in range(numberOfDevices):
-						if (available[child][dev] == 1 and fractions[child][dev] != 0):
-							a = (CCpu[dev] - currUsedCpuC[dev]) / (RCPUDQ * fractions[child][dev])
-							b = (CMem[dev] - currUsedMemC[dev]) / (RRAMDQ * fractions[child][dev])
-							if (a < b):
-								x = a
-							else:
-								x = b
-							if (x > 1):
-								x = 1
-							if (x < 0):
-								x = 0
-							x = round(x, 2)
-							currUsedCpuC[dev] = currUsedCpuC[dev] + x * fractions[child][dev] * RCPUDQ
-							currUsedMemC[dev] = currUsedMemC[dev] + x * fractions[child][dev] * RRAMDQ
-							childTemp[child].append(x)
-							childSum += fractions[child][dev] * x
-						else:
-							childTemp[child].append(0)
-				childSum = childSum / len(sourceChild[op])
-
-				if (childSum > sourceSum):  # If it is beneficial to assing dq check to children nodes
-					for child in sourceChild[op]:
-						DQfractions[child] = copy.deepcopy(childTemp[child])
-						UsedCpu = copy.deepcopy(currUsedCpuC)
-						UsedMem = copy.deepcopy(currUsedMemC)
-					sum += childSum
-				else:  # Else assing dq check to source
-					DQfractions[op] = copy.deepcopy(sourceTemp)
-					UsedCpu = copy.deepcopy(currUsedCpu)
-					UsedMem = copy.deepcopy(currUsedMem)
-					sum += sourceSum
-			
-			for dev in range(numberOfDevices):
-				UsedCpu[dev]=round(UsedCpu[dev],2)
-				UsedMem[dev]=round(UsedMem[dev],2)
-		
-			DQfraction=1/noOfSources*sum
-			if (DQfraction > 1):  # Due to float operations
-				DQfraction = 1
-			F=totalTransferTime/(1+beta*DQfraction)
-			DQfractionSpring=round(DQfraction,3)
-			totalTransferTimeSrping=round(totalTransferTime,3)
-			FSpring=round(F,3)
-			'''
+																UsedCpu, UsedMem,DQMode)
 			#Run heuristics
 			hs=HeuristicForSpring()
 
 
-
 			(DQfractionSpringH,totalTransferTimeSpringH,FSpringH)=hs.run(numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpu,UsedMem,RCPUDQ,RRAMDQ,available,comCost,pairs
-	,paths,source,sourceChild,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,FSpring,beta,alpha,executorPositions,operatorPositions)
+	,paths,source,sourceChild,noOfSources,fractions,transferTimes,slowestDevices,DQfractions,FSpring,beta,alpha,executorPositions,operatorPositions,DQMode)
 			if(FSpringH<0 or FSpring<0):#If no solution was found
 				return(0,0,0)
 			elif(FSpringH!=0):#If the heuristics solution is better
