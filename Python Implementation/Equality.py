@@ -41,35 +41,40 @@ class Equality():
 	#ARG2:beta for F formula-tested values: 0.5, 1, 1.5, 2, 3 
 	#ARG3:alpha penalty (the bigger the value the smaller the penalty)-tested values: 5, 10
 	#ARG4:threshold for qualOpt-tested values: 0.75, 0.8, 0.85, 0.9, 0.95
-	#ARG5:DQ check mode-tested values: "Sources", "Children"
-	#ARG6:number of iterations
+	#ARG5:number of iterations
+	#(OPTIONAL)ARG6:DQ check propagated to children nodes-tested values: 1
+	numberOfOperators = int(sys.argv[1])
+	beta = float(sys.argv[2])  # For F formula
+	penalty = int(sys.argv[3])  # Penalty
+	qThreshold = float(sys.argv[4])
+	numberOfIterations = int(sys.argv[5])
+	if(len(sys.argv)==7 and sys.argv[6]=="1"):
+		DQMode = "Children"
+	else:
+		DQMode="Sources"
+
 	f = open("FExp.txt", "a")
-	f.write("n="+sys.argv[1]+", b="+sys.argv[2]+", a="+sys.argv[3]+", threshold="+sys.argv[4]+", DQ mode="+ sys.argv[5]+", iterations="+sys.argv[6]+"\n")
+	f.write("n="+str(numberOfOperators)+", b="+str(beta)+", a="+str(penalty)+", threshold="+str(qThreshold)+", iterations="+str(numberOfIterations)+", DQ mode="+ DQMode+"\n")
 	f.close()
 	f = open("DQExp.txt", "a")
-	f.write(
-		"n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[4] + ", DQ mode=" +
-		sys.argv[5] + ", iterations=" + sys.argv[6] + "\n")
+	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
+		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("timeExp.txt", "a")
-	f.write(
-		"n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[4] + ", DQ mode=" +
-		sys.argv[5] + ", iterations=" + sys.argv[6] + "\n")
+	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
+		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("F.txt", "a")
-	f.write(
-		"n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[4] + ", DQ mode=" +
-		sys.argv[5] + ", iterations=" + sys.argv[6] + "\n")
+	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
+		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("DQ.txt", "a")
-	f.write(
-		"n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[4] + ", DQ mode=" +
-		sys.argv[5] + ", iterations=" + sys.argv[6] + "\n")
+	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
+		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("time.txt", "a")
-	f.write(
-		"n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[4] + ", DQ mode=" +
-		sys.argv[5] + ", iterations=" + sys.argv[6] + "\n")
+	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
+		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("FExp.txt", "a")
 	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
@@ -81,12 +86,6 @@ class Equality():
 	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
 	f.close()
 
-	numberOfOperators = int(sys.argv[1])
-	beta = float(sys.argv[2])  # For F formula
-	penalty = int(sys.argv[3])  # Penalty
-	qThreshold=float(sys.argv[4])
-	DQMode=sys.argv[5]
-	numberOfIterations = int(sys.argv[6])
 
 	#DEFINE GRAPH
 	for iter1 in range(0,8):
