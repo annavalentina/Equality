@@ -206,9 +206,9 @@ class Equality():
 			RCpu=[]
 			RMem=[]
 			for i in range(numberOfOperators):
-				RCpu.append(round(random.uniform(10, 100),2))
+				RCpu.append(round(random.uniform(1, 10),2))
 				RMem.append(random.randint(100, 1000))
-			RCPUDQ=round(random.uniform(10, 100),2)
+			RCPUDQ=round(random.uniform(1, 10),2)
 			RRAMDQ=random.randint(100, 1000)
 
 			#Characteristics of devices
@@ -217,7 +217,7 @@ class Equality():
 			UsedCpu=[]
 			UsedMem=[]
 			for i in range(numberOfDevices):
-				CCpu.append(round(random.uniform(10, 100),2))
+				CCpu.append(round(random.uniform(1, 10),2))
 				CMem.append(random.randint(100, 1000))
 				UsedCpu.append(0)
 				UsedMem.append(0)
