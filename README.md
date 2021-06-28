@@ -45,7 +45,7 @@ The main file is Equality.py and takes 5 mandatory and 1 optional arguments:
     1. Number of operators - tested values: 5, 10, 15
 	2. Beta for F formula - tested values: 0.5, 1, 1.5, 2, 3 
 	3. Alpha penalty for enabling many communication links (the bigger the value the smaller the penalty) - tested values: 5, 10
-	4. Threshold for qualOpt - tested values: 075, 0.8, 0.85, 0.9, 0.95
+	4. Threshold for qualOpt - tested values: 0.75, 0.8, 0.85, 0.9, 0.95
 	5. Number of iterations
 	6. (Optional) DQ check using multiple devices enabled - tested values: 1 
 The output is 3 files containing the total latency, DQ fraction and F value respectively.
