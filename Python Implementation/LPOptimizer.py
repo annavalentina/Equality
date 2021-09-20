@@ -72,7 +72,7 @@ class LPOptimizer():
 					for i in range(numberOfDevices):
 						tempUsedCpu[i]=tempUsedCpu[i]+(fraction[i].x*RCpu[op2]/100)-tempFractions[op2][i]*RCpu[op2]
 						tempUsedMem[i]=tempUsedMem[i]+(fraction[i].x*RMem[op2]/100)-tempFractions[op2][i]*RMem[op2]
-						tempFractions[op2][i]=round(fraction[i].x)/100
+						tempFractions[op2][i]=round((fraction[i].x)/100,3)
 						
 				#Call the function for the children of the operator
 				self.recursivePairsLP(op2,numberOfOperators,pairs,comCost,numberOfDevices,available,RCpu,CCpu,RMem,CMem,parents,flag,alpha)
@@ -109,7 +109,7 @@ class LPOptimizer():
 				slowestDevice=slowestDevices[op1,op2]#Find bottleneck/slowest device
 				betaF=tempFractions[op1][slowestDevice]*0.3#Fraction to remove from bottleneck device (30%)
 				dividedFraction=betaF/(availableDevices-1)#Fraction to divide to other devices that aleady hold data
-				tempFractions[op1][slowestDevice]=round(tempFractions[op1][slowestDevice]-betaF,2)	#Remove fraction from bottleneck
+				tempFractions[op1][slowestDevice]=round(tempFractions[op1][slowestDevice]-betaF,3)	#Remove fraction from bottleneck
 				tempUsedCpu[slowestDevice]=round(tempUsedCpu[slowestDevice]-betaF*RCpu[op1],2)
 				tempUsedMem[slowestDevice]=round(tempUsedMem[slowestDevice]-betaF*RMem[op1],2)
 				
@@ -118,12 +118,12 @@ class LPOptimizer():
 						#If the device can handle more data
 						if( (tempUsedCpu[k]+dividedFraction*RCpu[op1]) <=CCpu[k] 
 						and (tempUsedMem[k]+dividedFraction*RMem[op1]) <=CMem[k]):
-							tempFractions[op1][k]=round(tempFractions[op1][k]+dividedFraction,2)
+							tempFractions[op1][k]=round(tempFractions[op1][k]+dividedFraction,3)
 							tempUsedCpu[k]=round(tempUsedCpu[k]+dividedFraction*RCpu[op1],2)
 							tempUsedMem[k]=round(tempUsedMem[k]+dividedFraction*RMem[op1],2)
 						#If not the bottleneck device keeps them
 						else:
-							tempFractions[op1][slowestDevice]=round(tempFractions[op1][slowestDevice]+dividedFraction,2)
+							tempFractions[op1][slowestDevice]=round(tempFractions[op1][slowestDevice]+dividedFraction,3)
 							tempUsedCpu[slowestDevice]=round(tempUsedCpu[slowestDevice]+dividedFraction*RCpu[op1],2)
 							tempUsedMem[slowestDevice]=round(tempUsedMem[slowestDevice]+dividedFraction*RMem[op1],2)
 				#Enforce changes downstream the DAG and calculate metrics
@@ -178,7 +178,7 @@ class LPOptimizer():
 							if(fractions[i][dev]!=0 and availableDevices!=1 and availableDevices!=0):#If the source device takes on fraction from the operator and more than one devices take on fraction of the operator	
 								betaF=tempFractions[i][dev]*0.3#Fraction to remove from source device(30%)
 								dividedFraction=betaF/(availableDevices-1)#Fraction to divide to other devices that aleady hold data
-								tempFractions[i][dev]=round(tempFractions[i][dev]-betaF,2)	#Remove fraction from source device
+								tempFractions[i][dev]=round(tempFractions[i][dev]-betaF,3)	#Remove fraction from source device
 								tempUsedCpu[dev]=round(tempUsedCpu[dev]-betaF*RCpu[i],2)
 								tempUsedMem[dev]=round(tempUsedMem[dev]-betaF*RMem[i],2)
 			
@@ -187,12 +187,12 @@ class LPOptimizer():
 									#If the device can handle more data
 										if( (tempUsedCpu[k]+dividedFraction*RCpu[i]) <=CCpu[k] 
 										and (tempUsedMem[k]+dividedFraction*RMem[i]) <=CMem[k]):
-											tempFractions[i][k]=round(tempFractions[i][k]+dividedFraction,2)
+											tempFractions[i][k]=round(tempFractions[i][k]+dividedFraction,3)
 											tempUsedCpu[k]=round(tempUsedCpu[k]+dividedFraction*RCpu[i],2)
 											tempUsedMem[k]=round(tempUsedMem[k]+dividedFraction*RMem[i],2)
 										#If not the source device keeps them
 										else:
-											tempFractions[i][dev]=round(tempFractions[i][dev]+dividedFraction,2)
+											tempFractions[i][dev]=round(tempFractions[i][dev]+dividedFraction,3)
 											tempUsedCpu[dev]=round(tempUsedCpu[dev]+dividedFraction*RCpu[i],2)
 											tempUsedMem[dev]=round(tempUsedMem[dev]+dividedFraction*RMem[i],2)
 								#Enforce changes downstream the DAG and calculate metrics
@@ -224,19 +224,22 @@ class LPOptimizer():
 		global tempUsedCpu
 		global tempUsedMem
 		global tempSlowestDevices
+
 		iterflag=0
 		for iterator in range(10):
 			if(iterflag==0):
 				(transferTimes,totalTransferTimePairs,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfractionPairs,FPairs,iterflag)=self.latOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,DQMode)
 			else:#If no solution is found break
 				break;
-		iterflag=0
 
+		iterflag=0
 		for iterator in range(10):
 			if(iterflag==0):
 				(transferTimes,totalTransferTimeDQ,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfractionDQ,FDQ,iterflag)=self.qualOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold,DQMode)
 			else:#If no solution is found break
 				break;
+
+
 
 		return(DQfractionPairs,totalTransferTimePairs,FPairs,DQfractionDQ,totalTransferTimeDQ,FDQ)#If no better solution is found it returns the initial one
 
