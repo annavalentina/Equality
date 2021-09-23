@@ -18,8 +18,8 @@ from EqualAssignment import EqualAssignment
 import sys
 from FindMetrics import findMetricsFun
 
-class Equality():
 
+class Equality():
 	def divideNumber(parts):  # Function to divide a random into n unequal parts
 		sumPercentages = 0
 		while (sumPercentages == 0):
@@ -43,38 +43,35 @@ class Equality():
 	#ARG4:threshold for qualOpt-tested values: 0.75, 0.8, 0.85, 0.9, 0.95
 	#ARG5:number of iterations
 	#(OPTIONAL)ARG6:DQ check propagated to children nodes-tested values: 1
-	numberOfOperators = int(sys.argv[1])
-	beta = float(sys.argv[2])  # For F formula
-	penalty = int(sys.argv[3])  # Penalty
-	qThreshold = float(sys.argv[4])
-	numberOfIterations = int(sys.argv[5])
+
 	if(len(sys.argv)==7 and sys.argv[6]=="1"):
 		DQMode = "Children"
 	else:
 		DQMode="Sources"
 
 	f = open("FExp.txt", "a")
-	f.write("n="+str(numberOfOperators)+", b="+str(beta)+", a="+str(penalty)+", threshold="+str(qThreshold)+", iterations="+str(numberOfIterations)+", DQ mode="+ DQMode+"\n")
+	f.write("n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[
+		4] + ", iterations=" + sys.argv[5] + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("DQExp.txt", "a")
-	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
-		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
+	f.write("n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[
+		4] + ", iterations=" + sys.argv[5] + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("timeExp.txt", "a")
-	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
-		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
+	f.write("n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[
+		4] + ", iterations=" + sys.argv[5] + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("F.txt", "a")
-	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
-		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
+	f.write("n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[
+		4] + ", iterations=" + sys.argv[5] + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("DQ.txt", "a")
-	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
-		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
+	f.write("n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[
+		4] + ", iterations=" + sys.argv[5] + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("time.txt", "a")
-	f.write("n=" + str(numberOfOperators) + ", b=" + str(beta) + ", a=" + str(penalty) + ", threshold=" + str(
-		qThreshold) + ", iterations=" + str(numberOfIterations) + ", DQ mode=" + DQMode + "\n")
+	f.write("n=" + sys.argv[1] + ", b=" + sys.argv[2] + ", a=" + sys.argv[3] + ", threshold=" + sys.argv[
+		4] + ", iterations=" + sys.argv[5] + ", DQ mode=" + DQMode + "\n")
 	f.close()
 	f = open("FExp.txt", "a")
 	f.write("LP Spring latOpt qualOpt Equal solvedBy \n")
@@ -89,6 +86,7 @@ class Equality():
 
 	#DEFINE GRAPH
 	for iter1 in range(0,8):
+		numberOfIterations = int(sys.argv[5])
 		if (iter1 == 5):
 			f = open("F.txt", "a")
 			f.write("Replicated" + "\n")
@@ -166,6 +164,8 @@ class Equality():
 			 f.write("Medium" + str(iter1) + "\n")
 			 f.close()
 		for iter2 in range(numberOfIterations):
+			numberOfOperators = int(sys.argv[1])
+			qThreshold = float(sys.argv[4])
 			if(iter1==5):
 				if(numberOfOperators==5):
 					numberOfOperators=1
@@ -185,6 +185,7 @@ class Equality():
 			(paths,pairs,source,sink,children,parents,numberOfOperators,noOfSources,sourceChild)=dag.run()
 
 			numberOfDevices=numberOfOperators*5
+
 			#Set constraints
 			#Communication cost between devices (random)
 			meancomCost=0
@@ -222,8 +223,9 @@ class Equality():
 				UsedCpu.append(0)
 				UsedMem.append(0)
 
-			alpha=meancomCost/penalty#Penalty
-			
+			beta = float(sys.argv[2])  # For F formula
+			alpha = meancomCost / int(sys.argv[3])  # Penalty
+
 			#Availability of devices per operator
 			available=[]
 			population = [1, 0]
@@ -233,13 +235,14 @@ class Equality():
 				if (i not in source):
 					for j in range(numberOfDevices):
 						available[i].append(choices(population, weights)[0])
-			
+
+
 			fractions=[]
 			communicationCost=[]
 			for n in range(numberOfOperators):
 				fractions.append([])
 				communicationCost.append(-1)
-			
+
 			#Random distribution of sources to devices 
 			for op in source:
 				flag=0
@@ -257,15 +260,17 @@ class Equality():
 						available[op].append(1)
 					UsedCpu[dev]=UsedCpu[dev]+fractions[op][dev]*RCpu[op]
 					UsedMem[dev]=UsedMem[dev]+fractions[op][dev]*RMem[op]
-					
+
+
+
 			#Spring relaxation
 			sr=SpringRelaxation()
 			(DQfractionSpring,totalTransferTimeSrping,FSpring)=sr.run(numberOfDevices,comCost,numberOfOperators,paths,pairs,source,sourceChild,children,parents,RCpu,RMem,CCpu,CMem,available,fractions,RCPUDQ,RRAMDQ,noOfSources,beta,alpha,DQMode)
 
-			#Εqual distribution
+			#Equal distribution
 			eq=EqualAssignment()
 			(DQfractionEQ,totalTransferTimeEQ,FEQ,UsedCpuEQ,UsedMemEQ,fractionsEQ,transferTimesEQ,slowestDevicesEQ,DQfractionsEQ,slowestPathEQ)=eq.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,RCPUDQ,RRAMDQ,available,comCost,pairs,parents,paths,source,sourceChild,noOfSources,fractions,beta,alpha,DQMode)
-			
+
 			#LP initial solution
 			transferTimes={}
 			slowestDevices={}
@@ -320,9 +325,10 @@ class Equality():
 					
 			if(solved!=-1 ):#If a solution was found by LP
 				#Find metrics (latency, dq fraction, F)
-				(F,totalTransferTime,DQfraction,DQfractions,usedCpu,usedMem,transferTimes,slowestDevices,slowestPath)=findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources, beta, alpha, available, RCPUDQ, RRAMDQ,
+				(F,totalTransferTime,DQfraction,DQfractions,UsedCpu,UsedMem,transferTimes,slowestDevices,slowestPath)=findMetricsFun(numberOfDevices, comCost, paths, pairs, noOfSources, beta, alpha, available, RCPUDQ, RRAMDQ,
 							CCpu,
 							CMem, source, sourceChild, fractions, UsedCpu, UsedMem,DQMode)
+
 
 				#Call optimizer and find best solution
 				lpopt=LPOptimizer()
@@ -344,6 +350,7 @@ class Equality():
 						solvedBy="LP"
 
 			else:#Id LP found no solution
+				lpopt = LPOptimizer()
 				if(FEQ!=0):#If Equal found a solution
 					#Call optimizer using equal solution
 					(DQfractionLat,totalTransferTimeLat,FLat,DQfractionQual,totalTransferTimeQual,FQual)=lpopt.run(numberOfOperators,numberOfDevices,RCpu,RMem,CCpu,CMem,UsedCpuEQ,UsedMemEQ,RCPUDQ,RRAMDQ,available,comCost,pairs,parents
@@ -368,8 +375,11 @@ class Equality():
 				DQfraction=0
 				totalTransferTime=0
 
+
+
+
 			f = open("F.txt", "a")
-			f.write("LP: "+ str(F)+", Spring: "+str(FSpring)+", latOpt: "+ str(FLat)+ ", qualOpt: "+str(FQual)+ ", Equal: " +str(FEQ)+", solved by: "+solvedBy+"\n")
+			f.write("LP: "+ str(F)+ ", Spring: "+str(FSpring)+", latOpt: "+ str(FLat)+ ", qualOpt: "+str(FQual)+ ", Equal: " +str(FEQ)+", solved by: "+solvedBy+"\n")
 			f.close()
 			f = open("DQ.txt", "a")
 			f.write("LP: "+ str(DQfraction)+", Spring: "+str(DQfractionSpring)+", latOpt: "+ str(DQfractionLat)+ ", qualOpt: "+str(DQfractionQual)+ ", Equal: " +str(DQfractionEQ)+", solved by: "+solvedBy+"\n")
@@ -379,12 +389,12 @@ class Equality():
 			f.close()
 
 			f = open("FExp.txt", "a")
-			f.write(str(F) + " " + str(FSpring) + " " + str(FLat) + " " + str(FQual) + " " + str(FEQ) + " " + solvedBy + "\n")
+			f.write(str(F) +" " + str(FSpring) + " " + str(FLat) + " " + str(FQual) + " " + str(FEQ) + " " + solvedBy + "\n")
 			f.close()
 			f = open("DQExp.txt", "a")
-			f.write(str(DQfraction) + " " + str(DQfractionSpring) + " " + str(DQfractionLat) + " " + str(DQfractionQual) + " " + str(DQfractionEQ) + " " + solvedBy + "\n")
+			f.write(str(DQfraction) +  " " + str(DQfractionSpring) + " " + str(DQfractionLat) + " " + str(DQfractionQual) + " " + str(DQfractionEQ) + " " + solvedBy + "\n")
 			f.close()
 			f = open("timeExp.txt", "a")
-			f.write(str(totalTransferTime) + " " + str(totalTransferTimeSrping) + " " + str(totalTransferTimeLat) + " " + str(totalTransferTimeQual) + " " + str(totalTransferTimeEQ) + " " + solvedBy + "\n")
+			f.write(str(totalTransferTime) +  " " + str(totalTransferTimeSrping) + " " + str(totalTransferTimeLat) + " " + str(totalTransferTimeQual) + " " + str(totalTransferTimeEQ) + " " + solvedBy + "\n")
 			f.close()
 
