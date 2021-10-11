@@ -197,23 +197,24 @@ class LPOptimizer():
 											tempUsedMem[dev]=round(tempUsedMem[dev]+dividedFraction*RMem[i],2)
 								#Enforce changes downstream the DAG and calculate metrics
 								flag=self.recursivePairsLP(i,numberOfOperators,pairs,comCost,numberOfDevices,available,RCpu,CCpu,RMem,CMem,parents,0,alpha)
-								(tempF, temptotalTransferTime, tempDQfraction, TempDQfractions, tempUsedCpu, tempUsedMem,tempTransferTimes, tempSlowestDevices, tempSlowestPath) = \
-									findMetricsFun(numberOfDevices,comCost, paths, pairs,noOfSources, beta,alpha, available,
+								if(flag==0):
+									(tempF, temptotalTransferTime, tempDQfraction, TempDQfractions, tempUsedCpu, tempUsedMem,tempTransferTimes, tempSlowestDevices, tempSlowestPath) = \
+										findMetricsFun(numberOfDevices,comCost, paths, pairs,noOfSources, beta,alpha, available,
 												RCPUDQ, RRAMDQ,CCpu,CMem, source,sourceChild,tempFractions,
 												tempUsedCpu,tempUsedMem,DQMode)
 
-								if(tempF<F and flag==0):#If the solution is beneficial
-									transferTimes=copy.deepcopy(tempTransferTimes)
-									totalTransferTime=temptotalTransferTime
-									fractions=copy.deepcopy(tempFractions)
-									slowestDevices=copy.deepcopy(tempSlowestDevices)
-									slowestPath=tempSlowestPath
-									UsedCpu=copy.deepcopy(tempUsedCpu)
-									UsedMem=copy.deepcopy(tempUsedMem)
-									DQfractions=copy.deepcopy(TempDQfractions)
-									DQfraction=tempDQfraction
-									F=tempF
-									iterflag=0
+									if(tempF<F and flag==0):#If the solution is beneficial
+										transferTimes=copy.deepcopy(tempTransferTimes)
+										totalTransferTime=temptotalTransferTime
+										fractions=copy.deepcopy(tempFractions)
+										slowestDevices=copy.deepcopy(tempSlowestDevices)
+										slowestPath=tempSlowestPath
+										UsedCpu=copy.deepcopy(tempUsedCpu)
+										UsedMem=copy.deepcopy(tempUsedMem)
+										DQfractions=copy.deepcopy(TempDQfractions)
+										DQfraction=tempDQfraction
+										F=tempF
+										iterflag=0
 		return(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)
 
 
@@ -228,18 +229,21 @@ class LPOptimizer():
 		iterflag=0
 		for iterator in range(10):
 			if(iterflag==0):
-				(transferTimes,totalTransferTimePairs,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfractionPairs,FPairs,iterflag)=self.latOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,DQMode)
+				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.latOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,DQMode)
+				totalTransferTimePairs=totalTransferTime
+				DQfractionPairs=DQfraction
+				FPairs=F
 			else:#If no solution is found break
 				break;
-
 		iterflag=0
 		for iterator in range(10):
 			if(iterflag==0):
-				(transferTimes,totalTransferTimeDQ,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfractionDQ,FDQ,iterflag)=self.qualOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold,DQMode)
+				(transferTimes,totalTransferTime,fractions,slowestDevices,slowestPath,UsedCpu,UsedMem,DQfractions,DQfraction,F,iterflag)=self.qualOpt(numberOfOperators,pairs,paths,comCost,numberOfDevices,noOfSources,available,RCpu,CCpu,RMem,CMem,beta,alpha,parents,transferTimes,fractions,UsedCpu,UsedMem,slowestDevices,F,source,sourceChild,DQfractions,DQfraction,RRAMDQ,RCPUDQ,totalTransferTime,slowestPath,qThreshold,DQMode)
+				totalTransferTimeDQ = totalTransferTime
+				DQfractionDQ=DQfraction
+				FDQ=F
 			else:#If no solution is found break
 				break;
-
-
 
 		return(DQfractionPairs,totalTransferTimePairs,FPairs,DQfractionDQ,totalTransferTimeDQ,FDQ)#If no better solution is found it returns the initial one
 
